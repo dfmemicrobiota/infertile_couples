@@ -1,4 +1,4 @@
-# Characterization of genital microbiota in infertile couples"
+# Characterization of genital microbiota in infertile couples
 
 ```
 require(knitr)
