@@ -5,7 +5,7 @@ date: "`r Sys.Date()`"
 output: pdf_document
 ---
 
-```{r, echo=FALSE}
+```
 require(knitr)
 opts_knit$set(root.dir = normalizePath('../'))
 opts_chunk$set(tidy.opts=list(width.cutoff=80),tidy=TRUE)
@@ -46,7 +46,7 @@ Demultiplexing of the raw sequencing data was performed with illumina-utils pack
 
 ## 1.1 - Demultiplex reads
 
-```{bash}
+```
 #1. install and activate illumina utils - create a Python 3 virtual environment:
 
 mkdir -p ~/virtual-envs/
