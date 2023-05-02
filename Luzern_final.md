@@ -1,9 +1,4 @@
----
-title: "Supplementary file 1 - Characterization of genital microbiota in infertile couples"
-author: "Milos Stojanov"
-date: "`r Sys.Date()`"
-output: pdf_document
----
+# Characterization of genital microbiota in infertile couples"
 
 ```
 require(knitr)
@@ -12,7 +7,7 @@ opts_chunk$set(tidy.opts=list(width.cutoff=80),tidy=TRUE)
 knitr::opts_chunk$set(message=FALSE,echo=TRUE,eval=FALSE)
 ```
 
-# Description
+## Description
 
 In this study, we want the characterize genital microbiota of infertile couples.
 
