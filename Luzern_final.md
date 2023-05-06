@@ -41,52 +41,53 @@ Demultiplexing of the raw sequencing data was performed with illumina-utils pack
 
 ## 1.1 - Demultiplex reads
 
+#Install and activate illumina utils - create a Python 3 virtual environment:
 ```
-#1. install and activate illumina utils - create a Python 3 virtual environment:
-
 mkdir -p ~/virtual-envs/
 virtualenv ~/virtual-envs/illumina-utils-v2.7
 source ~/virtual-envs/illumina-utils-v2.7/bin/activate
 python --version
 ##Make sure the output starts with a '3'. Then continue with installation:
 
-#2. Install illumina-utils
 conda install illumina-utils
 #pip install illumina-utils
-
-#3. Activate illumina-utils virtualenv:
-
+```
+#Activate illumina-utils in virtualenv:
+```
 echo 'alias illumina-utils-activate-v2.7="source ~/virtual-envs/illumina-utils-v2.7/bin/activate"' >> ~/.bash_profile
 
 cd luzern2021
-
-##Check the correct filename
+```
+#Check the correct filename and decompress files
+```
 gunzip Luzern1_L1_R1_001.fastq.gz
-##tar -zxvf Unaligned-BIRTH01.tar #decompress files
+##tar -zxvf Unaligned-BIRTH01.tar
+```
 
-##create output folder based on the run number
+#create output folder based on the run number
+```
 mkdir demultiplexed_2
 
 gunzip *R1*.fastq.gz *R2*.fastq.gz *I1*.fastq.gz
 
 iu-demultiplex -s ~/luzern2021/barcode_to_sample_4.txt --r1 *R1*.fastq.gz --r2 *R2*.fastq.gz -i *I1*.fastq.gz -x -o ~/luzern2021/demultiplexed_4
+```
+#Repeat for all the runs
 
-##repeat for all the runs
+#Move files to the correct location
 
-
-#4. Move files to the correct location
-
+```
 mkdir ~/luzern2021/01_raw_sequences
 
 cp ~/luzern2021/demultiplexed*/*fastq ~/luzern2021/01_raw_sequences
 
 ```
 
-## 1.2 - Count reads
+## 1.2 - Reads count
 
-Count the number of reads in each files and store them in ReadsCount.csv
+#Count the number of reads in each files and store them in ReadsCount.csv. This is performed in bash.
 
-```{bash}
+```
 cd ~/luzern2021/01_raw_sequences
 
 ls *.fastq| while read LINE; do
@@ -98,7 +99,7 @@ ls *.fastq| while read LINE; do
 done |sed 's/\.fastq/,/g' > ~/luzern2021/ReadsCount_rawsequences.csv
 ```
 
-## 1.3 - QC
+## 1.3 - Quality control of the reads
 
 Assessment of the quality of the raw reads with fastqc.
 
@@ -122,7 +123,7 @@ Comments:
 
 Load required packages
 
-```{r}
+```
 # Load the libraries
 library(dada2)
 library(ShortRead)
@@ -135,7 +136,7 @@ library(DESeq2)
 
 Save
 
-```{r}
+```
 getwd()
 save.image("~/luzern2021/luzern2021_DADA2_.RData")
 load("~/luzern2021/luzern2021_DADA2.RData")
@@ -143,7 +144,7 @@ load("~/luzern2021/luzern2021_DADA2.RData")
 
 ## 1.5 - Get files path and sample names
 
-```{r}
+```
 library(dada2); packageVersion("dada2")
 path<-"~/luzern2021/01_raw_sequences/"
 # List all the files in trimmed directory
@@ -167,7 +168,7 @@ The overall quality of the reads is good, median and quartiles quality scores ar
 
 Generally, reverse reads have 'lower' scores at the 5' and 3' ends, but for the rest of the sequence scores were good.
 
-```{r}
+```
 # Quality scores of R1 reads (partial)
 plotQualityProfile(FWDfiles[1:3]) 
 # Quality scores of R2 reads (partial)
@@ -184,7 +185,7 @@ Comments:
 
 \- We will try two trimming settings: truncLen=c(180,140) and truncLen=c(200,160)
 
-```{r}
+```
 # Place filtered files in filtered/subdirectory
 path<-"~/luzern2021"
 filtFWD <- file.path(path,"05_filtered", paste0(sample.names, "_F_filt.fastq"))
@@ -221,7 +222,7 @@ mv ~/luzern2021/04_trimmed_sequences/filtered/* ~/luzern2021/05_filtered_sequenc
 
 All identical sequences are combined in "unique sequences" that are associated with "abundance" (number of reads that have this unique sequence)
 
-```{r}
+```
 setwd("~/luzern2021/05_filtered")
 derepFWD <- derepFastq(filtFWD)
 derepREV <- derepFastq(filtREV)
@@ -248,7 +249,7 @@ Each run has its specific error rates (cannot combine data from two different ru
 
 ! Parameter learning is computationally intensive, so by default the learnErrors function uses only a subset of the data (the first 100M bases = 1e8). If you are working with a large dataset and the plotted error model does not look like a good fit, you can try increasing the nbases parameter to see if the fit improves !
 
-```{r}
+```
 sys_str <- Sys.time()
 errF <- learnErrors(derepFWD, randomize=TRUE,nbases = 5e+08 ,multithread=TRUE)  
 errR <- learnErrors(derepREV, randomize=TRUE,nbases = 5e+08, multithread=TRUE) 
@@ -266,7 +267,7 @@ rm(sys_str)
 
 The DADA2 algorithm divides the reads in ASVs
 
-```{r}
+```
 sys_str <- Sys.time()
 dadaFs <- dada(filtFWD, err=errF, multithread=TRUE) # we need to incorporate "selfconsist" and "pool=TRUE"
 dadaRs <- dada(filtREV, err=errR, multithread=TRUE) # we need to incorporate "selfconsist" and "pool=TRUE"
@@ -286,7 +287,7 @@ Merging reads to obtain full denoised sequences. Merged sequences are output if 
 
 merger contains a list of data.frames. Each data.frame contains the merged \`\$sequence\`, \`\$abundance\`, the indices of FWD and REV sequences variant that were merged. Paired-reads that did not exactly match were removed by the \`mergePairs\` function.
 
-```{r}
+```
 mergers <- mergePairs(dadaFs, derepFWD, dadaRs, derepREV, verbose=TRUE, trimOverhang=TRUE)
 #save.image("luzern2021_DADA2.RData")
 # Inspect the merger data.frame from the first sample
@@ -297,7 +298,7 @@ head(mergers[[1]])
 
 ! some sequences may be shorter or longer than what is expected - here \~250 bp.
 
-```{r}
+```
 seqtab <- makeSequenceTable(mergers)
 
 dim(seqtab)
@@ -310,7 +311,7 @@ plot(table(nchar(getSequences(seqtab))))
 
 Chimeric sequences are identified if they can be exactly reconstructed by combining a left-segment and a right-segment from two more abundant "parent" sequences.
 
-```{r}
+```
 seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=TRUE, verbose=TRUE)
 
 dim(seqtab.nochim)
@@ -336,7 +337,7 @@ Create one file containing read counts from raw data and post-trimmomatic
 #awk 'BEGIN{FS=","; OFS=","} FNR==NR{a[FNR]=$2;next};{print $0, a[FNR]}' 01_trimmed/readsCounts2.csv  SOURCE DIRECTORY/ReadsCount.csv | grep 'R1' > #ReadsCounts.csv
 ```
 
-```{r}
+```
 library(ggplot2)
 library(reshape)
 
@@ -385,7 +386,7 @@ class(reads_counts)
 
 ## 1.15 - Track reads through the pipeline
 
-```{r}
+```
 ReadsTracking <- read.csv("~/luzern2021/reads_tracking.csv")
 
 div <- function(x,y) (x/y)*100
@@ -407,7 +408,7 @@ lostperSpecies
 
 Fasta release files from the UNITE ITS database can be used as is. To follow along, download the silva_nr_v132_train_set.fa.gz
 
-```{r}
+```
 #assignTaxonomy using DADA2/Silva
 setwd("~/luzern2021")
 
@@ -459,7 +460,7 @@ cut -f 1,8 -d , ASV_sequences2_aligned.csv | sed 's/;/,/g' | sed '1d' >> sina_ta
 
 # 3 - Create Phyloseq object
 
-```{r}
+```
 library(ggplot2)
 library(vegan) 
 library(dplyr)
@@ -539,7 +540,7 @@ FastTree -nt ~/luzern2021/06_Taxonomy/ASV_aligned_sequences.fna > ~/luzern2021/0
 
 ## 3.1.2 - Import tree file in the Phyloseq object
 
-```{r}
+```
 
 library("ape")
 
@@ -559,7 +560,7 @@ rank_names(ps)
 
 ## 3.2. - Export tax_table
 
-```{r}
+```
 # Export ASV table
 
 table = merge(tax_table(ps),t(otu_table(ps)), by="row.names")
@@ -597,7 +598,7 @@ write.csv2(data.frame(tax_table(ps)),file="taxtable.csv")
 
 ## 3.3. - Plot gel_band vs qPCR result
 
-```{r}
+```
 table.band<-samdf[,c(1,3,7,8,14)]
 
 plot.gelband.qpcr <- ggplot(table.band, aes(x=gel_band, y=qpcr))+
@@ -612,7 +613,7 @@ plot.gelband.qpcr
 
 ## 3.4. - Plot gel_band vs qPCR result (Figure 1)
 
-```{r}
+```
 table.band<-samdf[,c(1,3,7,8,14)]
 
 plot.gelband.qpcr <- ggplot(table.band, aes(x=gel_band, y=qpcr)) +
@@ -636,7 +637,7 @@ plot.gelband.qpcr
 
 ## 3.5. - Plot qPCR for each sample_type (Figure 4)
 
-```{r}
+```
 qpcr_type<-data.frame(samdf$sample_type,samdf$qpcr,samdf$is_sample)
 colnames(qpcr_type)<-c("sample_type","qpcr","is_sample")
 qpcr_type<-subset(qpcr_type,is_sample=="yes")
@@ -652,7 +653,7 @@ qpcr_type_plot
 
 # 4 - Check control community samples (Figure 3)
 
-```{r}
+```
 #subset
 ps_comm<-subset_samples(ps_raw, sample_type=="community")
 ps_comm<-tax_glom(ps_comm, taxrank="Genus")
@@ -722,7 +723,7 @@ phylum_percent<-phylum_reads/phylum_sums*100
 
 # 5 - Run decontam package (Figure 5)
 
-```{r}
+```
 library(phyloseq); packageVersion("phyloseq")
 library(ggplot2); packageVersion("ggplot2")
 library(decontam); packageVersion("decontam")
@@ -853,7 +854,7 @@ ggtitle("ASV5")
 
 ## 5.1 - Remove taxa identified by decontam
 
-```{r}
+```
 head(which(contamdf.comb2$contaminant))
 badTaxa = contaminant_toremove
 allTaxa = taxa_names(ps)
@@ -863,14 +864,14 @@ ps = phyloseq::prune_taxa(allTaxa, ps)
 
 # 6 - Remove samples with less then 1000 reads
 
-```{r}
+```
 ps_1000 = phyloseq::prune_samples(sample_sums(ps)>=1000, ps)
 samdf_1000<-meta(ps_1000)
 ```
 
 ## 6.1. - Create plot kept vs removed samples (Figure 6)
 
-```{r}
+```
 OTUtable.filt<-ps@otu_table@.Data
 OTUtable.filt<-as.data.frame(t(OTUtable.filt))
 
@@ -932,13 +933,13 @@ ggplot(OTUtable.final, aes(x=factor(result2, level = level_order), y=value)) +
 
 ## 6.2. - Keep only samples in ps object
 
-```{r}
+```
 ps_1000<-subset_samples(ps_1000,is_sample=="yes")
 ```
 
 ## 6.3. - Transform data to relative abundance
 
-```{r}
+```
 phylo.ab <- transform_sample_counts(ps_1000, function(x){x/sum(x)})
 
 phylo.abs <- phylo.ab
@@ -953,7 +954,7 @@ ps2<-phylo.abs
 
 Prevalence and abundance of top20 ASVs with maximum-likelihood phylogenetic tree
 
-```{r}
+```
 library(tidyverse)
 library(ggplot2)
 library(ggtree)
@@ -1141,7 +1142,7 @@ sed -n '/--/!p' blast_preval_result_cleann.csv > blast_preval_result_cleannn.csv
 #bacteria names were manually cleaned
 ```
 
-```{r}
+```
 #import blast results
 blast<-read.csv("~/luzern2021/06_Taxonomy/blast_preval_result_cleannn.csv",header = F,sep="\t")
 colnames(blast)<-c("hit", "ASV", "accession" ,"evalue" ,"bitscore", "coverage", "identity")
@@ -1222,7 +1223,7 @@ plot_tree
 dev.off()
 ```
 
-```{r}
+```
 heatmap.prev<-table.prev.ord %>% 
   pivot_longer(!ASV, names_to = "type", values_to = "value")
 
@@ -1422,7 +1423,7 @@ dev.off()
 
 ## Venn diagram of shared ASVs across the four sample types
 
-```{r}
+```
 library(tidyverse)
 library(caret)
 library(leaps)
@@ -1508,7 +1509,7 @@ dev.off()
 
 # 9 - Alpha diversity (Figures 9 & 10)
 
-```{r}
+```
 ps_1000<-subset_samples(ps_1000,is_sample=="yes")
 
 ps_m<-subset_samples(ps_1000, sample_type!="fol")
@@ -1594,7 +1595,7 @@ plot_richness(ps_spe,title="Alpha diversity",x="teratozoosperm",measures=c("Chao
 
 Find significant results for metadata variables
 
-```{r}
+```
 variables<-colnames(samdf_1000)
 
 #vagina
@@ -1755,7 +1756,7 @@ pairwise.wilcox.test(rich_spe$Observed,rich_spe$sample_type)
 
 # 10 - Beta diversity (Figure 11)
 
-```{r}
+```
 library("phyloseq")
 library("ggplot2")
 library("vegan")
@@ -1780,7 +1781,7 @@ plot_ordination(ps_noneg, ordination, color="sample_type") +
 
 # 11 - Pairwise distance intra- and inter-group (Figure 12)
 
-```{r}
+```
 #subset phyloseq object
 ps_vag_fol<-subset_samples(ps_1000, sample_type!="pen")
 ps_vag_fol<-subset_samples(ps_vag_fol, sample_type!="spe")
@@ -2168,7 +2169,7 @@ ggplot(beta_table_vag, aes(x=variable, y=value)) +
 
 12.1 - Functions
 
-```{r}
+```
 # This R script is an extension of vegan library's bioenv()
 # function and uses the bio.env() and bio.step() of
 #	http://menugget.blogspot.co.uk/2011/06/clarke-and-ainsworths-bioenv-and-bvstep.html
@@ -2399,7 +2400,7 @@ bio.env <- function(fix.mat, var.mat,
 
 ## 12.2 - Subset samples (female, male or selected couples)
 
-```{r}
+```
 library(ggplot2)
 library(ggdendro)
 library(ggtext)
@@ -2434,7 +2435,7 @@ ps_switch<-ps_1000
 
 ## 12.3 - Make clusters
 
-```{r}
+```
 abund_table <- as.data.frame(otu_table(ps_switch))
 abund_table <-abund_table[, colSums(abund_table != 0) > 0]
 abund_table<-abund_table[ , colSums(is.na(abund_table)) == 0]
@@ -2583,7 +2584,7 @@ dev.off()
 
 ## 12.4 - Find the dominant ASV
 
-```{r}
+```
 otu <- otu_table(t(ps_switch))
 otu<-otu@.Data
 
@@ -2624,7 +2625,7 @@ dominant_species$dominant<-gsub("NA", "sp.", dominant_species$dominant)
 
 ## 12.5 - Plot colors of each sample
 
-```{r}
+```
 ###################plot colors - samples ########
 plot(seq_len(length(colors)), rep_len(1, length(colors)),
      col = colors, pch = 15, cex = 1, xaxt = 'n', yaxt = 'n', xlab = '', ylab = '')
@@ -2632,7 +2633,7 @@ plot(seq_len(length(colors)), rep_len(1, length(colors)),
 
 ## 12.6 - Plot Shannon index for each sample
 
-```{r}
+```
 mytheme <- gridExtra::ttheme_minimal(col.just="left",base_size = 10,
                                      core = list(fg_params=list(hjust=0, x=0.1)),
                                      rowhead=list(fg_params=list(hjust=0, x=0)),
@@ -2668,7 +2669,7 @@ dev.off()
 
 # 13 - LEfSeR analysis (Figure 15)
 
-```{r}
+```
 ## Genus level
 library(lefser)
 library(readr)
@@ -2787,7 +2788,7 @@ lefserPlot(res_lefser_f)
 
 ## 14.1 - Percent stacked barplot of the most abundant genera (Supplementary figure 1)
 
-```{r}
+```
 library(phyloseq)
 library(microbiome)
 library(dplyr)
@@ -2974,7 +2975,7 @@ dev.off()
 
 ## 14.2 - Dominant ASVs
 
-```{r}
+```
 top.taxa <- tax_glom(ps_1000, taxrank=rank_names(ps_1000)[7], 
                      NArm=TRUE, bad_empty=c(NA, "", " ", "\t"))
 otu <- otu_table(t(top.taxa))
