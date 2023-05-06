@@ -73,9 +73,7 @@ Repeat for all the runs and move files to the correct location
 mkdir ~/luzern2021/01_raw_sequences
 
 cp ~/luzern2021/demultiplexed*/*fastq ~/luzern2021/01_raw_sequences
-
 ```
-
 ## 1.2 - Reads count
 
 ### Count the number of reads in each files and store them in ReadsCount.csv. This is performed in bash.
@@ -189,18 +187,16 @@ save.image("luzern2021_DADA2.RData")
 ```
 All parameters but truncLen were default DADA2 parameters.
 
-Move filtered reads to a new folder
-
-```{bash}
+Move filtered reads to a new folder (bash):
+```
 mkdir ~/luzern2021/05_filtered_sequences
 
 mv ~/luzern2021/04_trimmed_sequences/filtered/* ~/luzern2021/05_filtered_sequences
 ```
 
-## 1.8 - \`derepFastq\` Dereplication step
+## 2.4 - \`derepFastq\` Dereplication step
 
-All identical sequences are combined in "unique sequences" that are associated with "abundance" (number of reads that have this unique sequence)
-
+All identical sequences are combined in "unique sequences" that are associated with "abundance" (number of reads that have this unique sequence):
 ```
 setwd("~/luzern2021/05_filtered")
 derepFWD <- derepFastq(filtFWD)
@@ -209,25 +205,16 @@ sam.names <- sapply(strsplit(basename(filtFWD),"_"),`[`,1)
 names(derepFWD) <- sam.names
 names(derepREV) <- sam.names
 save.image("~/luzern2021/luzern2021_DADA2.RData")
-
 ```
 
-## 1.9 - Learn the error rates
+## 2.5 - Learn the error rates
 
-Data is used to model the probability of transitions and transversions (errors)
-
-in function of the read quality.
-
-Each run has its specific error rates (cannot combine data from two different runs)
-
+Obtained data is used to model the probability of transitions and transversions (errors) in function of the read quality. Each run has its specific error rates (cannot combine data from two different runs)
 \- black dots : observed error rates for each consensus quality score.
-
 \- black lines : estimates error rate after convergence of the algorithm
-
 \- red line : error rates expected under the nominal definition of the Q-score
 
-! Parameter learning is computationally intensive, so by default the learnErrors function uses only a subset of the data (the first 100M bases = 1e8). If you are working with a large dataset and the plotted error model does not look like a good fit, you can try increasing the nbases parameter to see if the fit improves !
-
+Parameter learning is computationally intensive, so by default the learnErrors function uses only a subset of the data (the first 100M bases = 1e8). If you are working with a large dataset and the plotted error model does not look like a good fit, you can try increasing the nbases parameter to see if the fit improves.
 ```
 sys_str <- Sys.time()
 errF <- learnErrors(derepFWD, randomize=TRUE,nbases = 5e+08 ,multithread=TRUE)  
@@ -239,13 +226,11 @@ sys_str
 #save.image("luzern2021_DADA2.RData")
 rm(sys_str)
 ```
+Comments: Overall very good reads quality
 
-## Comments: Overall very good reads quality
+## 2.6 - Sample inference
 
-## 1.10 - Sample inference
-
-The DADA2 algorithm divides the reads in ASVs
-
+The DADA2 algorithm separate the reads in ASVs:
 ```
 sys_str <- Sys.time()
 dadaFs <- dada(filtFWD, err=errF, multithread=TRUE) # we need to incorporate "selfconsist" and "pool=TRUE"
@@ -258,49 +243,40 @@ dadaFs[[1]]
 dadaRs[[1]]
 ```
 
-## 1.11 - Merging paired reads
+## 2.7 - Merging of paired reads
 
-Merging reads to obtain full denoised sequences. Merged sequences are output if the overlap is at least of 12 \*identical\* nucleotides.
+Merging reads to obtain full denoised sequences. Merged sequences are output if the overlap is at least of 12 \*identical\* nucleotides. Most of your reads should successfully merge. If that is not the case upstream parameters may need to be revisited: Did you trim away the overlap between your reads? 
 
-! Most of your reads should successfully merge. If that is not the case upstream parameters may need to be revisited: Did you trim away the overlap between your reads? !
-
-merger contains a list of data.frames. Each data.frame contains the merged \`\$sequence\`, \`\$abundance\`, the indices of FWD and REV sequences variant that were merged. Paired-reads that did not exactly match were removed by the \`mergePairs\` function.
-
+Merger contains a list of data.frames. Each data.frame contains the merged \`\$sequence\`, \`\$abundance\`, the indices of FWD and REV sequences variant that were merged. Paired-reads that did not exactly match were removed by the \`mergePairs\` function.
 ```
 mergers <- mergePairs(dadaFs, derepFWD, dadaRs, derepREV, verbose=TRUE, trimOverhang=TRUE)
 #save.image("luzern2021_DADA2.RData")
 # Inspect the merger data.frame from the first sample
 head(mergers[[1]])
 ```
+## 2.8 - Construct sequence table
 
-## 1.12 - Construct sequence table
-
-! some sequences may be shorter or longer than what is expected - here \~250 bp.
+Some sequences may be shorter or longer than what is expected. Here we have sequences of ~250 bp.
 
 ```
 seqtab <- makeSequenceTable(mergers)
-
 dim(seqtab)
-
-# Inspect distribution of sequence lengths
+```
+Inspect distribution of sequence lengths:
+```
 plot(table(nchar(getSequences(seqtab))))
 ```
 
-## 1.13 - Remove chimeras
+## 2.9 - Removal of chimeras
 
 Chimeric sequences are identified if they can be exactly reconstructed by combining a left-segment and a right-segment from two more abundant "parent" sequences.
-
 ```
 seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=TRUE, verbose=TRUE)
-
 dim(seqtab.nochim)
-
 rownames(seqtab.nochim)
-
 sum(seqtab.nochim)/sum(seqtab)
 
-# save sequences
-
+#save sequences
 sequences <- data.frame(colnames(seqtab.nochim))
 
 colnames(sequences) <- 'sequences'
@@ -308,11 +284,10 @@ write.csv(sequences, 'SB_sequences.csv')
 save.image("luzern2021_DADA2.RData")
 ```
 
-## 1.14 - Track the number of reads after each filtering steps (Figure 2)
+## 2.10 - Track the number of reads after each filtering steps (Figure 2)
 
-Create one file containing read counts from raw data and post-trimmomatic
-
-```{bash}
+Create one file containing read counts from raw data and post-trimmomatic (bash):
+```
 #awk 'BEGIN{FS=","; OFS=","} FNR==NR{a[FNR]=$2;next};{print $0, a[FNR]}' 01_trimmed/readsCounts2.csv  SOURCE DIRECTORY/ReadsCount.csv | grep 'R1' > #ReadsCounts.csv
 ```
 
