@@ -30,18 +30,15 @@ Demultiplexing of the raw sequencing data was performed with illumina-utils pack
 ## Data
 
 \- Illumina adapter file
-
 \- Raw data location contains:
-
 \- fastq.gz
-
 \- metadata
 
 # 1 - Reads processing
 
 ## 1.1 - Demultiplex reads
 
-# Install and activate illumina utils - create a Python 3 virtual environment:
+### Install and activate illumina utils - create a Python 3 virtual environment:
 ```
 mkdir -p ~/virtual-envs/
 virtualenv ~/virtual-envs/illumina-utils-v2.7
@@ -52,19 +49,18 @@ python --version
 conda install illumina-utils
 #pip install illumina-utils
 ```
-# Activate illumina-utils in virtualenv:
+### Activate illumina-utils in virtualenv:
 ```
 echo 'alias illumina-utils-activate-v2.7="source ~/virtual-envs/illumina-utils-v2.7/bin/activate"' >> ~/.bash_profile
 
 cd luzern2021
 ```
-# Check the correct filename and decompress files
+### Check the correct filename and decompress files
 ```
 gunzip Luzern1_L1_R1_001.fastq.gz
 ##tar -zxvf Unaligned-BIRTH01.tar
 ```
-
-# Create output folder based on the run number
+### Create output folder based on the run number
 ```
 mkdir demultiplexed_2
 
@@ -72,8 +68,7 @@ gunzip *R1*.fastq.gz *R2*.fastq.gz *I1*.fastq.gz
 
 iu-demultiplex -s ~/luzern2021/barcode_to_sample_4.txt --r1 *R1*.fastq.gz --r2 *R2*.fastq.gz -i *I1*.fastq.gz -x -o ~/luzern2021/demultiplexed_4
 ```
-# Repeat for all the runs and move files to the correct location
-
+### Repeat for all the runs and move files to the correct location
 ```
 mkdir ~/luzern2021/01_raw_sequences
 
@@ -83,7 +78,7 @@ cp ~/luzern2021/demultiplexed*/*fastq ~/luzern2021/01_raw_sequences
 
 ## 1.2 - Reads count
 
-#Count the number of reads in each files and store them in ReadsCount.csv. This is performed in bash.
+### Count the number of reads in each files and store them in ReadsCount.csv. This is performed in bash.
 
 ```
 cd ~/luzern2021/01_raw_sequences
