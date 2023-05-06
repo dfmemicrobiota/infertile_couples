@@ -84,9 +84,7 @@ cp ~/luzern2021/demultiplexed*/*fastq ~/luzern2021/01_raw_sequences
 cd ~/luzern2021/01_raw_sequences
 
 ls *.fastq| while read LINE; do
-
         echo -n $LINE ;
-
         echo $(cat < $LINE | wc -l)/4|bc ;
 
 done |sed 's/\.fastq/,/g' > ~/luzern2021/ReadsCount_rawsequences.csv
@@ -94,30 +92,23 @@ done |sed 's/\.fastq/,/g' > ~/luzern2021/ReadsCount_rawsequences.csv
 
 ## 1.3 - Quality control of the reads
 
-Assessment of the quality of the raw reads with fastqc.
+Assessment of the quality of the raw reads using fastqc.
 
-Install and activate multiqc in conda
-
-```{bash}
+Install and activate multiqc in conda in bash:
+```
 mkdir ~/luzern2021/02_FastQC_RAW
 for files in *.fastq; do fastqc $files -o ~/luzern2021/02_FastQC_RAW ; done
 multiqc ~/luzern2021/02_FastQC_RAW
 ```
-
 Comments:
-
 \- Overall bases quality is good
-
-\- presence of sequence duplication levels ; over represented sequences
-
+\- Presence of sequence duplication levels ; over represented sequences
 \- Per base sequence content and per sequence GC content failed QC
 
-## 1.4 - DADA2 pipeline
+# 2 - DADA2 pipeline
 
-Load required packages
-
+Load required libraries:
 ```
-# Load the libraries
 library(dada2)
 library(ShortRead)
 library(Biostrings)
@@ -126,66 +117,62 @@ library(biomformat)
 library(microbiome)
 library(DESeq2)
 ```
-
-Save
-
+Save the image:
 ```
 getwd()
 save.image("~/luzern2021/luzern2021_DADA2_.RData")
 load("~/luzern2021/luzern2021_DADA2.RData")
 ```
 
-## 1.5 - Get files path and sample names
-
+## 2.1 - Retreive files path and sample names
 ```
-library(dada2); packageVersion("dada2")
 path<-"~/luzern2021/01_raw_sequences/"
-# List all the files in trimmed directory
+```
+List all the files in trimmed directory:
+```
 list.files(path)
-# Forward and reverse fastq filenames have format: SAMPLENAME_R1_001.trim.fastq and SAMPLENAME_R2_001.fastq
+```
+Forward and reverse fastq filenames have format: SAMPLENAME_R1_001.trim.fastq and SAMPLENAME_R2_001.fastq:
+```
 FWDfiles <- sort(list.files(path, pattern="-R1.fastq", full.names = TRUE))
 REVfiles <- sort(list.files(path, pattern="-R2.fastq", full.names = TRUE))
-# Extract sample names, assuming filenames have format: SAMPLENAME_XXX.fastq
+```
+Extract sample names, assuming filenames have format: SAMPLENAME_XXX.fastq:
+```
 sample.names <- sapply(strsplit(basename(FWDfiles), "-R"), `[`, 1)
 str(sample.names)
 write.csv(sample.names,"samplenames.csv")
 ```
 
-## 1.6 - Quality scores
+## 2.2 - Check quality scores
 
-Median quality score is the green line. Quartile quality scores are the orange lines.
-
-The red line (bottom) is the proportion of reads that reach the position (length).
-
-The overall quality of the reads is good, median and quartiles quality scores are above 30 (phred score).
-
-Generally, reverse reads have 'lower' scores at the 5' and 3' ends, but for the rest of the sequence scores were good.
-
+Quality scores of R1 reads (partial):
 ```
-# Quality scores of R1 reads (partial)
 plotQualityProfile(FWDfiles[1:3]) 
-# Quality scores of R2 reads (partial)
+```
+Quality scores of R2 reads (partial):
+```
 plotQualityProfile(REVfiles[24:26])
 ```
+Median quality score is the green line. Quartile quality scores are the orange lines. The red line (bottom) is the proportion of reads that reach the position (length). The overall quality of the reads is good, median and quartiles quality scores are above 30 (phred score). Generally, reverse reads have 'lower' scores at the 5' and 3' ends, but for the rest of the sequence scores were good.
 
-## 1.7 - Trim the data
+## 2.3 - Trim the sequences
 
-Comments:
-
+Observations:
 \- Trimming should be adapted to the data-type and quality of the reads.
-
 \- \`truncLen\` must be large enough to maintain an overlap between forward and reverse reads of at least \`20 + biological.length.variation\` nucleotides.
+\- Two trimming settings: truncLen=c(180,140) and truncLen=c(200,160)
 
-\- We will try two trimming settings: truncLen=c(180,140) and truncLen=c(200,160)
 
+Place filtered files in filtered subdirectory
 ```
-# Place filtered files in filtered/subdirectory
 path<-"~/luzern2021"
 filtFWD <- file.path(path,"05_filtered", paste0(sample.names, "_F_filt.fastq"))
 filtREV<- file.path(path,"05_filtered", paste0(sample.names, "_R_filt.fastq"))
 names(filtFWD) <- sample.names
 names(filtREV) <- sample.names
 length(filtFWD)
+
 out1 <- filterAndTrim(FWDfiles, filtFWD, REVfiles, filtREV, truncLen=c(180,140), 
                      maxN=0, maxEE=c(2,4), truncQ=2, rm.phix=TRUE,      
                      compress=TRUE, multithread=TRUE) 
@@ -193,15 +180,14 @@ out1 <- filterAndTrim(FWDfiles, filtFWD, REVfiles, filtREV, truncLen=c(180,140),
 out2 <- filterAndTrim(FWDfiles, filtFWD, REVfiles, filtREV,truncLen=c(200,160), 
               maxN=0, maxEE=c(2,2), truncQ=2, rm.phix=TRUE,
               compress=TRUE, multithread=TRUE)
-# On Windows set multithread=FALSE
-# all parameters but truncLen are default DADA2 params
-
+              
 #any(duplicated(c(FWDfiles, filtFWD)))
 head(out1)
 head(out2)
 
 save.image("luzern2021_DADA2.RData")
 ```
+All parameters but truncLen were default DADA2 parameters.
 
 Move filtered reads to a new folder
 
