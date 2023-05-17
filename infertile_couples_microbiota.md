@@ -342,7 +342,7 @@ class(reads_counts)
 
 ## The filtering steps (trimmings, denoising, removal of artifact and chimeras) removed \~15% of the initial reads.
 
-## 1.15 - Tracking reads through the pipeline
+## 2.11 - Tracking reads through the pipeline
 Determination of the percentage of lost reads for each sample.
 ```
 ReadsTracking <- read.csv("~/luzern2021/reads_tracking.csv")
@@ -362,7 +362,7 @@ averageLost
 lostperSpecies
 ```
 
-# 2 - Assign taxonomy
+# 3 - Assign taxonomy
 
 Fasta release files from the UNITE ITS database can be used as is. To follow along, download the silva_nr_v132_train_set.fa.gz
 Taxonomy is assigned using DADA2 and the SILVA database. The assigned taxonomy and the ASV sequences (stored in "seqtab.nochim") are saved as CSV files.
@@ -384,7 +384,7 @@ write.csv2(file=paste(path_trim, "ASV_sequences.csv", sep="/"),seqtab.nochim)
 save.image("~/luzern2021/luzern2021_DADA2.RData")
 ```
 
-## 2.1 - Convert to fasta and run on SILVA
+## 3.1 - Convert to fasta and run on SILVA
 ASV sequences are extracted and saved as a FASTA file. Sequences are then aligned using the SINA tool, and the alignment results are saved in a CSV file. Subsequently, a new CSV file is created, containing simplified taxonomy information extracted from the alignment results. Fasta files have sequence as header (so that header is unique). This was done locally in bash, as the limit for online upload was reached
 
 ```
@@ -403,7 +403,7 @@ echo '"","Kingdom","Phylum","Class","Order","Family","Genus","Species"' > sina_t
 cut -f 1,8 -d , ASV_sequences2_aligned.csv | sed 's/;/,/g' | sed '1d' >> sina_taxonomy.csv
 ```
 
-# 3 - Create Phyloseq object
+# 4.1 - Create Phyloseq object
 A phyloseq object is a data structure used in R for storing and manipulating microbiome data, combining information about sample metadata, taxonomic abundance data, and phylogenetic relationships.
 
 Load required libraries:
@@ -476,11 +476,10 @@ ps_raw <- merge_phyloseq(ps_raw, dna)
 taxa_names(ps_raw) <- paste0("ASV", seq(ntaxa(ps_raw)))
 ```
 
-## 3.1 - Add tree to the phyloseq object
+## 4.2 - Add tree to the phyloseq object
 
-## 3.1.1 - Select sequences and perform Sina alignment
-
-```{bash}
+Select sequences and perform Sina alignment (done in bash). Create the tree file:
+```
 conda activate sina
 
 sina -i ~/luzern2021/06_Taxonomy/ASV_sequences2.fasta -o ~/luzern2021/06_Taxonomy/ASV_aligned_sequences.fna –meta-fmt csv –db ~/luzern2021/06_Taxonomy/SILVA_138.1_SSURef_NR99_12_06_20_opt.arb –search –search-db ~/luzern2021/06_Taxonomy/SILVA_138.1_SSURef_NR99_12_06_20_opt.arb –lca-fields tax_slv
@@ -488,19 +487,14 @@ sina -i ~/luzern2021/06_Taxonomy/ASV_sequences2.fasta -o ~/luzern2021/06_Taxonom
 #The alignment file in FastTree using aligned sequences
 
 FastTree -nt ~/luzern2021/06_Taxonomy/ASV_aligned_sequences.fna > ~/luzern2021/06_Taxonomy/FastTree_phyloseq
+```
+Import tree file in the Phyloseq object:
 
 ```
-
-## 3.1.2 - Import tree file in the Phyloseq object
-
-```
-
 library("ape")
 
 #import FastTree file
 tree_phyloseq <- read.tree("~/luzern2021/06_Taxonomy/FastTree_phyloseq")
-
-#import the tree file in the phyloseq object
 
 ps = phyloseq::merge_phyloseq(ps_raw, sampledata, tree_phyloseq)
 #remove community sample controls, mitochondria and chloroplast
@@ -511,61 +505,25 @@ ps <- ps %>% subset_taxa( Family!= "mitochondria" | is.na(Family) & Class!="Chlo
 rank_names(ps)
 ```
 
-## 3.2. - Export tax_table
+## 4.3. - Export tax_table from the phyloseq object
 
 ```
-# Export ASV table
-
 table = merge(tax_table(ps),t(otu_table(ps)), by="row.names")
-
 write.csv(table, "~/luzern2021/06_Taxonomy/ASVtable.csv")
-
-# Export to FASTA with Biostrings
-
+```
+Export to FASTA with Biostrings:
+```
 writeXStringSet(refseq(ps), "phyloseq_ASVs.fasta",append=FALSE, format="fasta")
-
-# Then align it with SINA/SILVA, and edit the taxonomy table to get it
-
-# To save phyloseq objects:
-
-# With Biostrings
-
+```
+Then align it with SINA/SILVA, and edit the taxonomy table:
+```
 writeXStringSet(refseq(ps), "outfile.fasta",append=FALSE, format="fasta")
-
-# With seqRFLP
-
-#install.packages("seqRFLP")
-
-#names <- table$Genus
-
-#sequences <- table$Row.names
-
-#dfasta <- data.frame(names,sequences)
-
-#df.fasta = dataframe2fas(dfasta, file="df.fasta")
-
-# Export Taxtable
 
 write.csv2(data.frame(tax_table(ps)),file="taxtable.csv")
 ```
 
-## 3.3. - Plot gel_band vs qPCR result
-
-```
-table.band<-samdf[,c(1,3,7,8,14)]
-
-plot.gelband.qpcr <- ggplot(table.band, aes(x=gel_band, y=qpcr))+
-      geom_boxplot()+
-      geom_point(aes(fill = sample_type), size = 2, shape = 21, na.rm=TRUE,position="dodge")+
-      scale_y_log10() + expand_limits(y = c(0, 1e10))+
-      scale_fill_brewer(palette="Set1")+
-      ggtitle("Correlation gel_band-qpcr")
-
-plot.gelband.qpcr
-```
-
-## 3.4. - Plot gel_band vs qPCR result (Figure 1)
-
+## 5.1. - Plot gel_band vs qPCR result
+We plot the qualitative quantification of the gel bands versus the quantification obtained by qPCR:
 ```
 table.band<-samdf[,c(1,3,7,8,14)]
 
@@ -588,8 +546,8 @@ plot.gelband.qpcr <- ggplot(table.band, aes(x=gel_band, y=log10(qpcr))) +
 plot.gelband.qpcr
 ```
 
-## 3.5. - Plot qPCR for each sample_type (Figure 4)
-
+## 5.2. - Plot qPCR for each sample_type (Figure 4)
+Separate samples by sample type (fol, pen, spe, vag and controls)
 ```
 qpcr_type<-data.frame(samdf$sample_type,samdf$qpcr,samdf$is_sample)
 colnames(qpcr_type)<-c("sample_type","qpcr","is_sample")
@@ -604,8 +562,8 @@ qpcr_type_plot <- ggplot(qpcr_type, aes(x=sample_type, y=qpcr,fill=sample_type))
 qpcr_type_plot
 ```
 
-# 4 - Check control community samples (Figure 3)
-
+# 5.3. - Check control community samples (Figure 3)
+The ZymoBIOMICS Microbial Community DNA Standard was included in the analysis to evaluate possible amplification biases:
 ```
 #subset
 ps_comm<-subset_samples(ps_raw, sample_type=="community")
@@ -674,8 +632,8 @@ phylum_sums<-sum(phylum_reads)
 phylum_percent<-phylum_reads/phylum_sums*100
 ```
 
-# 5 - Run decontam package (Figure 5)
-
+# 6 - Run decontam package (Figure 5)
+The decontam package in R is a tool for detecting and removing potential contaminant sequences from high-throughput sequencing data. It is specifically designed for microbiome studies where contaminants can be present due to various sources, such as reagents, laboratory environment, or sample handling.
 ```
 library(phyloseq); packageVersion("phyloseq")
 library(ggplot2); packageVersion("ggplot2")
@@ -692,7 +650,6 @@ setwd("~/luzern2021/07_output")
 phylobj <- prune_samples(sample_sums(ps) >= 1, ps)
 phylobj <- subset_samples(phylobj,qpcr!="na")
 phylobj <- subset_samples(phylobj,sample_type!="community")
-
 
 #Inspect Library Sizes
 df <- as.data.frame(sample_data(phylobj)) # Put sample_data into a ggplot-friendly data.frame
@@ -743,7 +700,7 @@ dev.off()
 contaminant_toremove<-subset(contamdf.comb2,contaminant==TRUE)
 contaminant_toremove<-row.names(contaminant_toremove)
 
-#check samples vs controls in the most abundant 5 ASV
+#check samples vs controls in the most abundant 3 ASV
 ASV1.df<-otu_table(phylobj)[,1]
 ASV1.df<-as.data.frame(ASV1.df)
 ASV1.df$sample<-rownames(ASV1.df)
@@ -779,34 +736,9 @@ geom_bar(stat="identity",aes(fill = type)) +
 scale_y_continuous(trans='log10') +
 theme(text = element_text(size=5),axis.text.x = element_text(angle = 90))+
 ggtitle("ASV3")
-
-ASV4.df<-otu_table(phylobj)[,4]
-ASV4.df<-as.data.frame(ASV4.df)
-ASV4.df$sample<-rownames(ASV4.df)
-ASV4.df$type<-"sample"
-ASV4.df$type[259:278]<-"ctrl"
-
-plot4<-ggplot(data=ASV4.df, aes(x=sample,y=ASV4)) +
-geom_bar(stat="identity",aes(fill = type)) +
-scale_y_continuous(trans='log10') +
-theme(text = element_text(size=5),axis.text.x = element_text(angle = 90))+
-ggtitle("ASV4")
-
-ASV5.df<-otu_table(phylobj)[,5]
-ASV5.df<-as.data.frame(ASV2.df)
-ASV5.df$sample<-rownames(ASV2.df)
-ASV5.df$type<-"sample"
-ASV5.df$type[259:278]<-"ctrl"
-
-plot5<-ggplot(data=ASV5.df, aes(x=sample,y=ASV5)) +
-geom_bar(stat="identity",aes(fill = type)) +
-scale_y_continuous(trans='log10') +
-theme(text = element_text(size=5),axis.text.x = element_text(angle = 90))+
-ggtitle("ASV5")
 ```
 
-## 5.1 - Remove taxa identified by decontam
-
+## 6.1 - Remove taxa identified by decontam
 ```
 head(which(contamdf.comb2$contaminant))
 badTaxa = contaminant_toremove
@@ -815,15 +747,13 @@ allTaxa <- allTaxa[!(allTaxa %in% badTaxa)]
 ps = phyloseq::prune_taxa(allTaxa, ps)
 ```
 
-# 6 - Remove samples with less then 1000 reads
-
+# 6.2 - Remove samples with less then 1000 reads
 ```
 ps_1000 = phyloseq::prune_samples(sample_sums(ps)>=1000, ps)
 samdf_1000<-meta(ps_1000)
 ```
 
-## 6.1. - Create plot kept vs removed samples (Figure 6)
-
+## 6.3. - Create plot kept vs removed samples (Figure 6)
 ```
 OTUtable.filt<-ps@otu_table@.Data
 OTUtable.filt<-as.data.frame(t(OTUtable.filt))
@@ -883,16 +813,10 @@ ggplot(OTUtable.final, aes(x=factor(result2, level = level_order), y=value)) +
   xlab("Samples") + ylab("Reads") +
   ggpubr::rotate_x_text()
 ```
-
-## 6.2. - Keep only samples in ps object
-
+## 6.4. - Keep only samples in ps object and transform data to relative abundance
 ```
 ps_1000<-subset_samples(ps_1000,is_sample=="yes")
-```
 
-## 6.3. - Transform data to relative abundance
-
-```
 phylo.ab <- transform_sample_counts(ps_1000, function(x){x/sum(x)})
 
 phylo.abs <- phylo.ab
@@ -903,10 +827,11 @@ phylo.abs <- phylo.ab
 ps2<-phylo.abs
 ```
 
-# 7 - Most prevalent ASVs (Figure 7)
+# 7 - What are the most prevalent ASVs (Figure 7)
 
-Prevalence and abundance of top20 ASVs with maximum-likelihood phylogenetic tree
+Prevalence and abundance of top20 ASVs with maximum-likelihood phylogenetic tree.
 
+Load the libraries:
 ```
 library(tidyverse)
 library(ggplot2)
@@ -922,9 +847,9 @@ library(gplots)
 library(RColorBrewer)
 library(reshape2)
 library(fantaxtic)
-
-#extract legend for combined plots
-#https://github.com/hadley/ggplot2/wiki/Share-a-legend-between-two-ggplot2-graphs
+```
+Extract legend for combined plots (see: https://github.com/hadley/ggplot2/wiki/Share-a-legend-between-two-ggplot2-graphs)
+```
 g_legend<-function(a.gplot){
   tmp <- ggplot_gtable(ggplot_build(a.gplot))
   leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
@@ -940,7 +865,9 @@ addSmallLegend <- function(myPlot, pointSize = 1, textSize = 3, spaceLegend = 0.
           legend.text  = element_text(size = textSize),
           legend.key.size = unit(spaceLegend, "lines"))
   }
-
+```
+Subset samples:
+```
 ps_1000<-subset_samples(ps_1000,is_sample=="yes")
 
 ps_1000_f<-subset_samples(ps_1000,sample_type!="pen")
@@ -950,45 +877,54 @@ ps_1000_m<-subset_samples(ps_1000,sample_type!="vag")
 ps_1000_m<-subset_samples(ps_1000_m,sample_type!="fol")
 
 ps_20<-get_top_taxa(ps_1000,20)
-
-#SWITCH
+```
+Create a swith to be able to use different phyloseq files as input. Here the examples for female samples:
+```
 phylo.obj<-ps_1000_f
 phylo.obj<-get_top_taxa(phylo.obj,19)
-
-#Extraxt OTU table from all the samples
+```
+Extraxt OTU table from all the samples:
+```
 OTU1 = as(otu_table(phylo.obj), "matrix")
 if(taxa_are_rows(phylo.obj)){OTU1 <- t(OTU1)}
 OTUdf = as.data.frame(OTU1)
-
-#Prevalence
+```
+Calculate prevalence:
+```
 prev<-colSums(OTUdf!=0)
 prev<-(100/nrow(OTUdf)*prev)
-
-#Abundance
+```
+Calculate abundance:
+```
 abund<-colSums(OTUdf)
 c<-sum(abund)
 abund<-(abund/c*100)
-
-#Create table
+```
+Add prev and abund in a table:
+```
 table<-data.frame(prev,abund)
-
-#Select ASV that have prevalence above 25%
+```
+Select ASV that have prevalence above 25%:
+```
 table_top<-subset(table, prev > 1)
 
 table_top$ASV<-row.names(table_top)
-
-#Select top taxa
+```
+Select the top taxa:
+```
 ps.top = prune_taxa(table_top$ASV, ps_1000)
-
-#subset phyloseq object:
+```
+Subset phyloseq object:
+```
 ps.top.noneg<-subset_samples(ps.top, is_sample=="yes")
 
 ps.top.noneg_vag<-subset_samples(ps.top.noneg, sample_type=="vag")
 ps.top.noneg_fol<-subset_samples(ps.top.noneg, sample_type=="fol")
 ps.top.noneg_spe<-subset_samples(ps.top.noneg, sample_type=="spe")
 ps.top.noneg_pen<-subset_samples(ps.top.noneg, sample_type=="pen")
-
-#Create OTU tables
+```
+Create OTU tables for the different sample types:
+```
 ##vag
 OTU.vag = as(otu_table(ps.top.noneg_vag), "matrix")
 if(taxa_are_rows(ps.top.noneg_vag)){OTU.vag <- t(OTU.vag)}
@@ -1009,12 +945,12 @@ OTU.pen = as(otu_table(ps.top.noneg_pen), "matrix")
 if(taxa_are_rows(ps.top.noneg_pen)){OTU.pen <- t(OTU.pen)}
 OTUdf.pen = as.data.frame(t(OTU.pen))
 
-#selection of most prevalent ASV in home and hospital data
 selection<-rownames(table_top)
 
 write(selection, "~/luzern2021/06_Taxonomy/prevalentASV.txt")
-
-#calculate prevalences and abundance
+```
+Calculate prevalences and abundances:
+```
 #Prevalence
 prev.vag<-rowSums(OTUdf.vag!=0)
 prev.vag<-100/nsamples(ps.top.noneg_vag)*prev.vag
@@ -1047,15 +983,17 @@ table.prev$ASV<-rownames(table.prev)
 
 table.abund<-data.frame(abund.vag,abund.fol,abund.spe,abund.pen)
 table.abund$ASV<-rownames(table.abund)
-
-#retreive phylum
+```
+Retreive phylum information:
+```
 taxa.table_top<- tax_table(ps)
 taxa.table_top<-as.matrix(taxa.table_top@.Data)
 taxa.table_top<-as.data.frame(taxa.table_top[,2])
 colnames(taxa.table_top)<-"Phylum"
 taxa.table_top$ASV<-rownames(taxa.table_top)
-
-#add Phylum column
+```
+Add Phylum column
+```
 metadata<-dplyr::inner_join(table_top, taxa.table_top, by = "ASV")
 
 selection_vag<-rownames(as.data.frame(abund.vag))
@@ -1065,8 +1003,8 @@ selection_pen<-rownames(as.data.frame(abund.pen))
 
 selection_m<-intersect(selection_spe,selection_pen)
 ```
-
-```{bash}
+Run blast locally to identify the closest bacterial species associated to ASVs included in the analysis (done in bash). Bacterial names were manually edited after the analysis:
+```
 cd /Users/mstojano/luzern2021/06_Taxonomy
 
 seqtk subseq ASV_sequences2.fasta prevalentASV.txt > prevalentASV.fasta
@@ -1076,7 +1014,6 @@ conda activate sina
 sina -i ~/luzern2021/06_Taxonomy/prevalentASV.fasta -o ~/luzern2021/06_Taxonomy/aligned_prevalentASV.fna --meta-fmt csv --db ~/luzern2021/06_Taxonomy/SILVA_138.1_SSURef_NR99_12_06_20_opt.arb --search --search-db ~/luzern2021/06_Taxonomy/SILVA_138.1_SSURef_NR99_12_06_20_opt.arb --lca-fields tax_slv
 
 #The alignment file in FastTree using aligned sequences
-
 FastTree -nt ~/luzern2021/06_Taxonomy/aligned_prevalentASV.fna > ~/luzern2021/06_Taxonomy/FastTree_prevalent
 
 #Blast selected ASV to find closest matches
@@ -1091,39 +1028,41 @@ grep -A 1 "found" blast_preval_result.csv > blast_preval_result_clean.csv
 
 sed -n '/# 2 hits found/!p' blast_preval_result_clean.csv > blast_preval_result_cleann.csv
 sed -n '/--/!p' blast_preval_result_cleann.csv > blast_preval_result_cleannn.csv
-
-#bacteria names were manually cleaned
 ```
-
+Import blast results:
 ```
-#import blast results
 blast<-read.csv("~/luzern2021/06_Taxonomy/blast_preval_result_cleannn.csv",header = F,sep="\t")
 colnames(blast)<-c("hit", "ASV", "accession" ,"evalue" ,"bitscore", "coverage", "identity")
-
-#round the numbers of identity
+```
+Round the numbers of identities to the nearest whole number:
+```
 blast<-blast %>% mutate_at(vars(coverage, identity), funs(round(., 0)))
-
-#import FastTree file
+```
+Import the FastTree file for the construction of the tree:
+```
 tree <- read.tree("~/luzern2021/06_Taxonomy/FastTree_prevalent")
 tree1<- ggtree(tree)
 plot_tree<-tree1 + geom_tiplab(align=TRUE, linetype='dashed', linesize=.4)
-
-#extract tree1 data information - ASV order
+```
+Extract tree1 data information - ASV order:
+```
 tree1_data<-tree1$data
 tree1_data<-tree1_data[, c(2,4,7)]   
 tree1_data<- tree1_data[grep("ASV", tree1_data$label),]
 tree1_data<-tree1_data %>% arrange(desc(y))
 #tree1_data$y<-NULL
 colnames(tree1_data) <- c("node", "ASV", "position")
-
-#Rearrange tables based on ASV positions in the tree
+```
+Rearrange tables based on ASV positions in the tree:
+```
 table.prev.ord<-table.prev[tree1_data$ASV,]
 table.prev.ord<-table.prev.ord %>% mutate_at(vars(prev.vag, prev.fol, prev.spe, prev.pen), funs(round(., 1)))
 
 table.abund.ord<-table.abund[tree1_data$ASV,]
 table.abund.ord<-table.abund.ord %>% mutate_at(vars(abund.vag, abund.fol, abund.spe, abund.pen), funs(round(., 1)))
-
-#Separate sample types
+```
+Separate sample types:
+```
 table.prev.ord.vag<-table.prev.ord[,c(1,5)]
 table.prev.ord.fol<-table.prev.ord[,c(2,5)]
 table.prev.ord.spe<-table.prev.ord[,c(3,5)]
@@ -1133,8 +1072,9 @@ table.abund.ord.vag<-table.abund.ord[,c(1,5)]
 table.abund.ord.fol<-table.abund.ord[,c(2,5)]
 table.abund.ord.spe<-table.abund.ord[,c(3,5)]
 table.abund.ord.pen<-table.abund.ord[,c(4,5)]
-
-#Rearrange blast table based on ASV positions in the tree
+```
+Rearrange blast table based on ASV positions in the tree
+```
 rownames(blast)<-blast$ASV
 blast.ord<-blast[tree1_data$ASV,]
 
@@ -1151,12 +1091,15 @@ for(i in 1:nrow(tree1_data)){
 
 tree1<- ggtree(tree)
 plot_tree<-tree1 + geom_tiplab(align=TRUE, linetype='dashed', linesize=.3,size=3) + xlim(NA, 1)
-
+```
+Save the tree:
+```
 pdf("tree_most_preval.pdf",width = 8,height = 8)
 plot_tree
 dev.off()
-
-#print only ASVs
+```
+Print only ASVs (used to construct the figure):
+```
 mytheme <- gridExtra::ttheme_minimal(col.just="left",base_size = 10,
                                      core = list(fg_params=list(hjust=0, x=0.1)),
                                      rowhead=list(fg_params=list(hjust=0, x=0)),
@@ -1166,16 +1109,19 @@ mytheme <- gridExtra::ttheme_minimal(col.just="left",base_size = 10,
 blast.ord$OTU<-gsub("ASV", "OTU", blast.ord$ASV)
 pASVs<-tableGrob(blast.ord$ASV,theme=mytheme)
 grid.draw(pASVs)
-
-#print only hits
+```
+Print only hits (used to construct the figure):
+```
 phits<-tableGrob(blast.ord$hit,theme=mytheme)
 grid.draw(phits)
-
+```
+Save the tree:
+```
 pdf("tree_most_preval.pdf",width = 8,height = 8)
 plot_tree
 dev.off()
 ```
-
+Create heatmaps for prevalences and abundances:
 ```
 heatmap.prev<-table.prev.ord %>% 
   pivot_longer(!ASV, names_to = "type", values_to = "value")
@@ -1192,8 +1138,9 @@ abund.vag<- melt(table.abund.ord.vag)
 abund.fol<- melt(table.abund.ord.fol)
 abund.spe<- melt(table.abund.ord.spe)
 abund.pen<- melt(table.abund.ord.pen)
-
-#PLOTS PREVALENCE
+```
+Create prevalence plots:
+```
 #Prepare the legend
 px<-ggplot(prev.vag, aes(x = variable, y = factor(ASV), fill = value)) +
   geom_raster(aes(fill=value))+
@@ -1265,16 +1212,18 @@ p4<-ggplot(prev.pen, aes(x = variable, y = factor(ASV), fill = value)) +
         axis.title.y=element_blank(),legend.position="none",
         panel.background=element_blank(),panel.border=element_blank(),panel.grid.major=element_blank(),
         panel.grid.minor=element_blank(),plot.background=element_blank())
-
-#Combine the plots
+```
+Combine all prevalence plots:
+```
 p_preval <- grid.arrange(arrangeGrob(p1 + theme(legend.position="none"),
                                     p2 + theme(legend.position="none"),
                                     p3 + theme(legend.position="none"),
                                     p4 + theme(legend.position="none"),
                                     nrow=1),
                                     mylegend, nrow=2,heights=c(20, 10))
-
-#PLOTS ABUNDANCE TOT
+```
+Create prevalence plots
+```
 #Prepare the legend
 py<-ggplot(abund.vag, aes(x = variable, y = factor(ASV), fill = value)) +
   geom_raster(aes(fill=value))+
@@ -1289,7 +1238,9 @@ addSmallLegend(py)
 
 mylegend<-g_legend(py + theme(legend.position="bottom") + theme(legend.title=element_blank())+ guides(color = guide_legend(override.aes = list(size = 0.01))))
 
-#Plots
+```
+Create abundance plots:
+```
 p5<-ggplot(abund.vag, aes(x = variable, y = factor(ASV), fill = value)) +
   geom_raster(aes(fill=value))+
   scale_fill_distiller(palette = "Blues", direction=2,breaks=c(0, 10,20,30,40),limits = c(0,40))+
@@ -1350,7 +1301,9 @@ p8<-ggplot(abund.pen, aes(x = variable, y = factor(ASV), fill = value)) +
         panel.background=element_blank(),panel.border=element_blank(),panel.grid.major=element_blank(),
         panel.grid.minor=element_blank(),plot.background=element_blank())
 
-#Combine the plots
+```
+Combine all abundance plots:
+```
 p_abund <- grid.arrange(arrangeGrob(p5 + theme(legend.position="none"),
                                      p6 + theme(legend.position="none"),
                                      p7 + theme(legend.position="none"),
@@ -1358,19 +1311,22 @@ p_abund <- grid.arrange(arrangeGrob(p5 + theme(legend.position="none"),
                                      nrow=1),
                                     mylegend, nrow=2,heights=c(20, 10))
 
-# Combine the plots
+
 g_prevalabund = cbind(p_preval,p_abund, size = "last")
 
 # Draw it
 grid.newpage()
 grid.draw(g_prevalabund)
 
-#Save figure
+```
+Save the heatmap part of the figure:
+```
 pdf("figure_tree.pdf",width = 5,height = 14)
 grid.newpage()
 grid.draw(g_prevalabund)
 dev.off()
 ```
+Different parts of the figure were combined in another software.
 
 # 8 - Shared ASVs between sample types. (Figure 8)
 
