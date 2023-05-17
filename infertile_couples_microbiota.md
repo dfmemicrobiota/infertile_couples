@@ -2159,12 +2159,9 @@ ggplot(beta_table_vag, aes(x=variable, y=value)) +
   geom_boxplot(fill=c("#56b1e9", "#3da822", "#e9568e","#e9568e"))
 ```
 
-# 12 - Cluster samples based on their community composition (Bray-Curtis dissimilarities) (Figures 13 and 14)
+# 11 - Cluster samples based on their community composition (Bray-Curtis dissimilarities) (Figures 13 and 14)
 
-## 
-
-12.1 - Functions
-
+11.1 - Create required functions:
 ```
 # This R script is an extension of vegan library's bioenv()
 # function and uses the bio.env() and bio.step() of
@@ -2430,36 +2427,37 @@ ps_switch<-ps_1000
 ```
 
 ## 12.3 - Make clusters
-
 ```
 abund_table <- as.data.frame(otu_table(ps_switch))
 abund_table <-abund_table[, colSums(abund_table != 0) > 0]
 abund_table<-abund_table[ , colSums(is.na(abund_table)) == 0]
 
-
 meta_table<-samdf_1000
 meta_table <- meta_table[rownames(abund_table),]
-
-#select specific metadata
-#keep only numeric columns in meta_table
+```
+Select specific metadata. Keep only numeric columns in meta_table:
+```
 meta_table <- meta_table[,c(14,15,37,49,54), drop=FALSE]
 
 meta_table <- sapply(meta_table, as.numeric)
 meta_table <- as.data.frame(meta_table[ , apply(meta_table, 2, function(x) !any(is.na(x)))])
 meta_table<-as.data.frame(meta_table[ , colSums(is.na(meta_table)) == 0])
 meta_table <-meta_table[, colSums(meta_table != 0) > 0]
-
-#Get grouping information
+```
+Get grouping information
+```
 grouping_info<-data.frame(row.names=rownames(abund_table),t(as.data.frame(strsplit(rownames(abund_table),"_"))))
 head(grouping_info)
-
-#Parameters
+```
+Define parameters:
+```
 cmethod<-"pearson" #Correlation method to use: pearson, pearman, kendall
 fmethod<-"bray" #Fixed distance method: euclidean, manhattan, gower, altGower, canberra, bray, kulczynski, morisita,horn, binomial, and cao
 vmethod<-"bray" #Variable distance method: euclidean, manhattan, gower, altGower, canberra, bray, kulczynski, morisita,horn, binomial, and cao
 nmethod<-"bray" #NMDS distance method:  euclidean, manhattan, gower, altGower, canberra, bray, kulczynski, morisita,horn, binomial, and cao
-
-
+```
+Perform a multivariate analysis using the function "bio.env" on the Wisconsin data (abundance table) and the metadata table:
+```
 res <- bio.env(wisconsin(abund_table), meta_table,fix.dist.method=fmethod, 
                var.dist.method=vmethod, correlation.method=cmethod,
                scale.fix=FALSE, scale.var=TRUE) 
@@ -2550,8 +2548,9 @@ element_text <- function(family = NULL, face = NULL, colour = NULL,
 tip_names<-hc_d$labels$label
 tip_names<-rev(tip_names)
 
-
-## ######Plot cluster beta diversity ########
+```
+Plot clusters of beta diversity:
+```
 p1 <- ggplot(data = segment(hc_d)) +
   geom_segment(aes(x=x, y=y, xend=xend, yend=yend)) +
   scale_x_discrete(limits=label(hc_d)$label)+
@@ -2572,14 +2571,15 @@ p1 + theme(axis.text.y=element_text(size=rel(0.5))) + theme(
   legend.background = element_rect(fill='transparent'), #transparent legend bg
   legend.box.background = element_rect(fill='transparent') #transparent legend panel
 )
-
+```
+Save the plot:
+```
 pdf("Cluster_samples.pdf",height=10)
 print(p1)
 dev.off()
 ```
 
 ## 12.4 - Find the dominant ASV
-
 ```
 otu <- otu_table(t(ps_switch))
 otu<-otu@.Data
@@ -2599,43 +2599,44 @@ colnames(df_all)<-c("sample","asv","prevalence")
 df_all<-left_join(df_all,asv_table,by="asv")
 df_all$type<- str_sub(df_all$sample,-3)
 df_all$dominant_species<-df_all$name
-
-#melt and reorder
+```
+Melt and reorder:
+```
 df_all_melt<-melt(df_all)
 df_all_melt<-df_all_melt[match(label(hc_d)$label, df_all_melt$sample),]
 
 df_all_melt$sample <- as.character(df_all_melt$sample)
-
-#Then turn it back into a factor with the levels in the correct order
+```
+Then turn it back into a factor with the levels in the correct order
+```
 df_all_melt$sample <- factor(df_all_melt$sample, levels=unique(df_all_melt$sample))
 
-#plot
+```
+Create the plot:
+```
 prevplot<-ggplot(df_all_melt, aes(fill=sample, y=value, x=sample))+  
   geom_point() + theme(legend.position="none") + coord_flip()
 
-###########dominant species - create table#####################
+```
+Create table of the dominant species:
+```
 dominant_species<-data.frame(rev(df_all_melt$sample), rev(df_all_melt$dominant_species))
 colnames(dominant_species)<-c("sample","dominant")
 dominant_species$dominant<-gsub("NA", "sp.", dominant_species$dominant)
 ```
 
 ## 12.5 - Plot colors of each sample
-
 ```
-###################plot colors - samples ########
 plot(seq_len(length(colors)), rep_len(1, length(colors)),
      col = colors, pch = 15, cex = 1, xaxt = 'n', yaxt = 'n', xlab = '', ylab = '')
 ```
 
 ## 12.6 - Plot Shannon index for each sample
-
 ```
 mytheme <- gridExtra::ttheme_minimal(col.just="left",base_size = 10,
                                      core = list(fg_params=list(hjust=0, x=0.1)),
                                      rowhead=list(fg_params=list(hjust=0, x=0)),
                                      padding=unit(c(4, 2), "mm"))
-
-#p2<-tableGrob(dominant_species$dominant,theme=ttheme_minimal(base_size = 4))
 
 p2<-tableGrob(dominant_species$dominant,theme=mytheme)
 
@@ -2643,7 +2644,9 @@ pdf("dominant_species.pdf", height=30, width=8)
 grid.draw(p2)
 dev.off()
 
-###############alpha diversity####################
+```
+Create the plot:
+```
 p<-plot_richness(ps_switch, measures=("Shannon")) +
   theme_classic() + 
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
@@ -2658,6 +2661,9 @@ p<-plot_richness(ps_switch, measures=("Shannon")) +
     legend.box.background = element_rect(fill='transparent') #transparent legend panel
   )
 
+```
+Save the plot:
+```
 pdf("shannon_samples.pdf",width= 2,height=18)
 print(p)
 dev.off()
@@ -2665,8 +2671,8 @@ dev.off()
 
 # 13 - LEfSeR analysis (Figure 15)
 
+Load required packages:
 ```
-## Genus level
 library(lefser)
 library(readr)
 library(tibble)
@@ -2674,42 +2680,60 @@ library(dplyr)
 
 setwd("~/luzern2021")
 
-#agglomerate phyloseq object at the genus level
+```
+Agglomerate phyloseq object at the genus level:
+```
 ps_genus<-subset_samples(ps_1000,is_sample=="yes")
 ps_genus<-tax_glom(ps_genus, taxrank=rank_names(ps_genus)[6], NArm=TRUE, bad_empty=c(NA, "", " ", "\t"))
 
-#extract otu table (be sure to not include controls)
+```
+Extract otu table (be sure to not include controls):
+```
 otu_table_genus<-ps_genus@otu_table@.Data
 otu_table_genus<-as.data.frame(t(otu_table_genus))
 
-#create table with asv
+```
+Create table with asv:
+```
 change_asv<-as.data.frame(colnames(t(otu_table_genus)))
 change_asv$asv<-change_asv$`colnames(t(otu_table_genus)`
 
-#retreive genera corresponding to each asv
+```
+Retreive genera corresponding to each asv:
+```
 taxa_table<-as.data.frame((as.matrix(ps_genus@tax_table@.Data)))
 taxa_table$asv<-row.names(taxa_table)
 keeps <- c("asv", "Genus")
 change_genus<-taxa_table[keeps]
 
-#join tables asv and genus table
+```
+Join tables asv and genus table:
+```
 genus_names<-left_join(change_asv, change_genus, by = "asv")
 
-#change taxa names
+```
+Change taxa names:
+```
 rownames(otu_table_genus)<-genus_names$Genus
 otu_table_genus<-as.data.frame(otu_table_genus)
 
 keeps<-colnames(otu_table_genus)
 
-#import metadata file
+```
+Import metadata file:
+```
 metadata<-read.csv(
   file = "~/luzern2021/00_metadata/luzern_metadata_final_290322.csv",header = T)
 row.names(metadata)<-metadata$sample
 
-#keep only samples (no controls)
+```
+Keep only samples (no controls):
+```
 metadata<-metadata[keeps,]
 
-#create SummarizedExperiment
+```
+Create SummarizedExperiment:
+```
 se_genus <- SummarizedExperiment(otu_table_genus, colData = metadata)
 se_genus<-se_genus[, se_genus$age_opu != "na"]
 
@@ -2722,13 +2746,16 @@ se_genus_spe<-se_genus[, se_genus$sample_type == "spe"]
 se_genus_f<-se_genus[, se_genus$sample_pairs == "fv"]
 se_genus_m<-se_genus[, se_genus$sample_pairs == "ps"]
 
-#perform lefser
+```
+Perform LEfSeR analysis:
 
-###comparison between female samples###
+Comparison between female samples:
+```
 res_lefser_f <- lefser(se_genus_f, groupCol = "sample_type", blockCol = NULL)
 lefserPlot(res_lefser_f)
-
-#plot relative abundance
+```
+Plot relative abundances:
+```
 ps_genus_f<-subset_samples(ps_genus,sample_pairs=="fv")
 ps_genus_rel= transform_sample_counts(ps_genus_f, function(x) x/sum(x))
 
@@ -2748,12 +2775,15 @@ test %>% ggplot(aes(x=variable, y=value)) +
   geom_boxplot()+
   coord_flip() +
   theme_light()
-
-###male samples###
+```
+Comparison between female samples:
+```
 res_lefser_m <- lefser(se_genus_m, groupCol = "sample_type", blockCol = NULL)
 lefserPlot(res_lefser_m)
 
-#Relative abundance plot
+```
+Plot relative abundances:
+```
 ps_genus_m<-subset_samples(ps_genus,sample_pairs=="ps")
 ps_genus_rel= transform_sample_counts(ps_genus_m, function(x) x/sum(x))
 
@@ -2775,7 +2805,9 @@ test %>% ggplot(aes(x=variable, y=value)) +
   theme_light()
 
 
-######comparison female vs male#####
+```
+Copare female versus male samples:
+```
 res_lefser_FvsM <- lefser(se_genus, groupCol = "sample_pairs", blockCol = NULL)
 lefserPlot(res_lefser_f)
 ```
@@ -2784,6 +2816,7 @@ lefserPlot(res_lefser_f)
 
 ## 14.1 - Percent stacked barplot of the most abundant genera (Supplementary figure 1)
 
+Load required packages:
 ```
 library(phyloseq)
 library(microbiome)
@@ -2796,7 +2829,9 @@ library(ggpubr)
 library(randomcoloR)
 library(V8)
 
-#Agglomerate to genus level and subset
+```
+Agglomerate to genus level and subset
+```
 ps_genus<-tax_glom(ps_1000, taxrank=rank_names(ps_1000)[6], 
                    NArm=TRUE, bad_empty=c(NA, "", " ", "\t"))
 
@@ -2812,7 +2847,9 @@ genus_spe<-subset_samples(ps_genus,sample_type=="spe")
 
 l<-list("genus_vag"=genus_vag,"genus_fol"=genus_fol,"genus_pen"=genus_pen,"genus_spe"=genus_spe)
 
-#Make graph using for loop
+```
+Make plots using for loop:
+```
 graphs<-list()
 graph.names<-c("Vagina","Follicular fluid","Penis","Sperm")
 
