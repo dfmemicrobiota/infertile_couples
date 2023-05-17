@@ -1,12 +1,5 @@
 # Characterization of genital microbiota in infertile couples
 
-```
-require(knitr)
-opts_knit$set(root.dir = normalizePath('../'))
-opts_chunk$set(tidy.opts=list(width.cutoff=80),tidy=TRUE)
-knitr::opts_chunk$set(message=FALSE,echo=TRUE,eval=FALSE)
-```
-
 ## Description
 
 In this study, we want the characterize genital microbiota of infertile couples.
