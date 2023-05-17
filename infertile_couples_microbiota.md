@@ -1323,8 +1323,7 @@ Different parts of the figure were combined in another software.
 
 # 8 - Shared ASVs between sample types. (Figure 8)
 
-## Venn diagram of shared ASVs across the four sample types
-
+Load required packages:
 ```
 library(tidyverse)
 library(caret)
@@ -1332,14 +1331,18 @@ library(leaps)
 library(dplyr)
 library(fantaxtic)
 library(ggVennDiagram)
-
+```
+Subset phyloseq object for sample types:
+```
 ps_spe<-phyloseq::subset_samples(ps_1000, sample_type=="spe")
 ps_pen<-phyloseq::subset_samples(ps_1000, sample_type=="pen")
 ps_fol<-phyloseq::subset_samples(ps_1000, sample_type=="fol")
 ps_vag<-phyloseq::subset_samples(ps_1000, sample_type=="vag")
+```
+Extract ASVs present in all sample types
 
-#Extract ASVs present in all sample types
-#spe samples
+Spe samples:
+```
 ps_spe_100<-get_top_taxa(ps_spe, 99, relative = TRUE, discard_other = FALSE,other_label = "Other")
 spe_asv100<-colSums(ps_spe_100@otu_table@.Data)
 spe_asv100<-spe_asv100[spe_as100v>0]
@@ -1348,8 +1351,9 @@ spe_asv100<-names(spe_asv100)
 spe_asv<-colSums(ps_spe_100@otu_table@.Data)
 spe_asv<-spe_asv[spe_asv>0]
 spe_asv<-names(spe_asv)
-
-#pen samples
+```
+Pen samples:
+```
 ps_pen_100<-get_top_taxa(ps_pen, 99, relative = TRUE, discard_other = FALSE,other_label = "Other")
 pen_asv100<-colSums(ps_pen_100@otu_table@.Data)
 pen_asv100<-pen_asv100[pen_asv100>0]
@@ -1358,8 +1362,9 @@ pen_asv100<-names(pen_asv100)
 pen_asv<-colSums(ps_pen@otu_table@.Data)
 pen_asv<-pen_asv[pen_asv>0]
 pen_asv<-names(pen_asv)
-
-#vag samples
+```
+Vag samples:
+```
 ps_vag_100<-get_top_taxa(ps_vag, 99, relative = TRUE, discard_other = FALSE,other_label = "Other")
 vag_asv100<-colSums(ps_vag_100@otu_table@.Data)
 vag_asv100<-vag_asv100[vag_asv100>0]
@@ -1368,8 +1373,9 @@ vag_asv100<-names(vag_asv100)
 vag_asv<-colSums(ps_vag@otu_table@.Data)
 vag_asv<-vag_asv[vag_asv>0]
 vag_asv<-names(vag_asv)
-
-#fol samples
+```
+Fol samples:
+```
 ps_fol_100<-get_top_taxa(ps_fol, 99, relative = TRUE, discard_other = FALSE,other_label = "Other")
 fol_asv100<-colSums(ps_fol_100@otu_table@.Data)
 fol_asv100<-fol_asv100[fol_asv100>0]
@@ -1379,10 +1385,14 @@ fol_asv<-colSums(ps_fol@otu_table@.Data)
 fol_asv<-fol_asv[fol_asv>0]
 fol_asv<-names(fol_asv)
 
+```
+Create a list with all sample types:
+```
 all_asv_100<-list("vag_asv"=vag_asv100,"fol_asv"=fol_asv100,"pen_asv"=pen_asv100,"spe_asv"=spe_asv100)
 all_asv<-list("vag_asv"=vag_asv,"fol_asv"=fol_asv,"pen_asv"=pen_asv,"spe_asv"=spe_asv)
-
-#find ASVs present in all samples (top100)
+```
+Find ASVs present in all samples (top100):
+```
 intersect_f<-intersect(vag_asv,fol_asv)
 intersect_m<-intersect(pen_asv,spe_asv)
 intersect_all<-as.data.frame(intersect(intersect_f,intersect_m))
@@ -1391,7 +1401,9 @@ colnames(intersect_all)<-"ASV"
 intersect_all<-left_join(intersect_all,ASVtable)
 
 intersect_all_melt<-melt(intersect_all)
-
+```
+Plot Venn diagram:
+```
 bp<- ggplot(intersect_all_melt, aes(x="", y=Genus, fill=Genus))+
   geom_bar(width = 1, stat = "identity") 
 
@@ -1402,15 +1414,20 @@ intersect_100_asv<-left_join(intersect_all,asv_table)
 
 venn_all<-ggVennDiagram(all_asv) +
   ggplot2::scale_fill_gradient(low="cornsilk",high = "orange")
-
+```
+Save output:
+```
 pdf("~/luzern2021/07_output/venn_all_asv.pdf",width = 10,height = 10)
 ggVennDiagram(all_asv_100) +
   ggplot2::scale_fill_gradient(low="cornsilk",high = "orange")
 dev.off()
 ```
 
-# 9 - Alpha diversity (Figures 9 & 10)
+# 9 - Alpha diversities
 
+## 9.1. Calculate and plot alpha diversities (Figures 9 & 10)
+
+Subset phyloseq objects:
 ```
 ps_1000<-subset_samples(ps_1000,is_sample=="yes")
 
@@ -1430,12 +1447,14 @@ ps_vag_pen<-subset_samples(ps_vag_pen,sample_type!="spe")
 
 ps_fol_spe<-subset_samples(ps_1000,sample_type!="vag")
 ps_fol_spe<-subset_samples(ps_fol_spe,sample_type!="pen")
-
-#plot alpha diversity
+```
+Plot alpha diversity
+```
 alpha<- plot_richness(ps_1000,title="Alpha diversity",x="sample_type",measures=c("Observed","Shannon","InvSimpson")) + 
   geom_boxplot()
-
-#find correlations between alpha diversities
+```
+Find correlations between alpha diversities of different sample types
+```
 alpha.<-data.frame(sample=alpha$data$sample,sample_type=alpha$data$sample_type,value=alpha$data$value,couple=alpha$data$couple)
 
 alpha.vag <- subset(alpha., sample_type=="vag")
@@ -1450,6 +1469,9 @@ alpha.spe.vag<-left_join(alpha.spe,alpha.vag,by="couple")
 alpha.spe.fol<-left_join(alpha.spe,alpha.fol,by="couple")
 alpha.pen.fol<-left_join(alpha.pen,alpha.fol,by="couple")
 
+```
+Create scatter plot:
+```
 ggscatter(alpha.pen.fol, x = "value.y", y = "value.x",color = "black", shape = 21, size = 2, # Points color, shape and size
    add = "reg.line",  # Add regressin line
    add.params = list(color = "blue", fill = "lightgray"), # Customize reg. line
@@ -1462,8 +1484,9 @@ ggscatter(alpha.pen.fol, x = "value.y", y = "value.x",color = "black", shape = 2
    ylab="pen"
    #label = "couple"
    )
-
-#function to display some useful information on boxplots
+```
+Add a function to display some useful information on boxplots:
+```
 stat_box_data <- function(y) {
   return( 
     data.frame(
@@ -1473,7 +1496,9 @@ stat_box_data <- function(y) {
     )
   )
 }
-
+```
+Plot alpha diversities based on metadata information (examples):
+```
 #infertility cause
 plot_richness(ps_1000,title="Alpha diversity",x="infretility",measures=c("Chao1", "Shannon","Observed")) + geom_boxplot()
 
@@ -1493,14 +1518,16 @@ plot_richness(ps_spe,title="Alpha diversity",x="asthenozoosperm",measures=c("Cha
 plot_richness(ps_spe,title="Alpha diversity",x="teratozoosperm",measures=c("Chao1", "Shannon","Observed")) + geom_boxplot()
 ```
 
-## 9.1. - Perform ANOVA
+## 9.1 - Perform ANOVA
 
-Find significant results for metadata variables
+Find significant results for metadata variables.
 
+Select metadata variables:
 ```
 variables<-colnames(samdf_1000)
-
-#vagina
+```
+Vag samples:
+```
 alpha.div.anova.vag<-data.frame()
 
 for (z in 1:length(variables)) {
@@ -1514,15 +1541,16 @@ new.table<-new.table[1,]
 if(nrow(new.table) == 0) next
 alpha.div.anova.vag <- bind_rows(alpha.div.anova.vag,new.table)
 }
-
-#Plot significant results
+```
+Plot significant results for vag samples:
+```
 plot_richness(ps_vag,title="Shannon index",x="endometriosis",measures="Shannon") + 
   geom_boxplot() + 
   stat_summary(fun.data = stat_box_data,geom = "text", hjust = 0.5, vjust = 5.0)
 
-    
-
-#fol
+```
+Fol samples:
+```
 alpha.div.anova.fol<-data.frame()
 for (z in 1:length(variables)) {
 rich_fol<-estimate_richness(ps_fol, measures=c("Observed", "InvSimpson", "Shannon", "Chao1"))
@@ -1536,12 +1564,16 @@ if(nrow(new.table) == 0) next
 alpha.div.anova.fol <- bind_rows(alpha.div.anova.fol,new.table)
 }
 
-#Plot significant results
+```
+Plot significant results for fol samples:
+```
 plot_richness(ps_fol,title="Shannon index",x="ICSI",measures="Shannon") +   
     geom_boxplot() +
     stat_summary(fun.data = stat_box_data, geom = "text", hjust = 0.5, vjust = 5.0)
 
-#pen
+```
+Pen samples:
+```
 alpha.div.anova.pen<-data.frame()
 for (z in 1:length(variables)) {
 rich_pen<-estimate_richness(ps_pen, measures=c("Observed", "InvSimpson", "Shannon", "Chao1"))
@@ -1555,12 +1587,16 @@ if(nrow(new.table) == 0) next
 alpha.div.anova.pen <- bind_rows(alpha.div.anova.pen,new.table)
 }
 
-#Plot significant results - pen
+```
+Plot significant results for pen samples:
+```
 plot_richness(ps_pen,title="Shannon index",x="number_blastocystes",measures="Shannon") + 
   geom_boxplot() +
   stat_summary(fun.data = stat_box_data, geom = "text", hjust = 0.5, vjust = 5.0)
 
-#spe
+```
+Spe samples:
+```
 alpha.div.anova.spe<-data.frame()
 for (z in 1:length(variables)) {
 rich_spe<-estimate_richness(ps_spe, measures=c("Observed", "InvSimpson", "Shannon", "Chao1"))
@@ -1574,7 +1610,9 @@ if(nrow(new.table) == 0) next
 alpha.div.anova.spe <- bind_rows(alpha.div.anova.spe,new.table)
 }
 
-#Plot significant results - spe
+```
+Plot significant results for spe samples:
+```
 plot_richness(ps_spe,x="azoosperm",measures="Shannon") + 
   geom_boxplot() +
   stat_summary(fun.data = stat_box_data, geom = "text", hjust = 0.5, vjust = 5.0)
@@ -1593,8 +1631,9 @@ plot_richness(ps_spe,title="azoosperm",x="azoosperm",measures="Shannon") +
   geom_boxplot() +
   stat_summary(fun.data = stat_box_data, geom = "text", hjust = 0.5, vjust = 5.0) +
   annotate("text", x = 1.5, y=7.5, label = "p = 0.0")
-
-##Male samples
+```
+Male samples:
+```
 alpha.div.anova.m<-data.frame()
 for (z in 1:length(variables)) {
 rich_m<-estimate_richness(ps_m, measures=c("Observed", "InvSimpson", "Shannon", "Chao1"))
@@ -1608,13 +1647,16 @@ if(nrow(new.table) == 0) next
 alpha.div.anova.m <- bind_rows(alpha.div.anova.m,new.table)
 }
 
-#Plot significant results
-
+```
+Plot significant results for male samples:
+```
 plot_richness(ps_m,title="Shannon index",x="oligosperm",measures="Shannon") + 
   geom_boxplot() +
   stat_summary(fun.data = stat_box_data, geom = "text", hjust = 0.5, vjust = 5.0)
 
-##Female samples
+```
+Female samples:
+```
 alpha.div.anova.f<-data.frame()
 for (z in 1:length(variables)) {
 rich_f<-estimate_richness(ps_f, measures=c("Observed", "InvSimpson", "Shannon", "Chao1"))
@@ -1628,12 +1670,16 @@ if(nrow(new.table) == 0) next
 alpha.div.anova.m <- bind_rows(alpha.div.anova.m,new.table)
 }
 
-#Plot significant results
+```
+Plot significant results for female samples:
+```
 plot_richness(ps_m,title="Shannon index",x="oligosperm",measures="Shannon") + 
   geom_boxplot() +
   stat_summary(fun.data = stat_box_data, geom = "text", hjust = 0.5, vjust = 5.0)
 
-##All samples
+```
+All samples:
+```
 alpha.div.anova<-data.frame()
 for (z in 1:length(variables)) {
 rich_1000<-estimate_richness(ps_1000, measures=c("Observed", "InvSimpson", "Shannon", "Chao1"))
@@ -1647,7 +1693,9 @@ if(nrow(new.table) == 0) next
 alpha.div.anova <- bind_rows(alpha.div.anova,new.table)
 }
 
-#Plot significant results
+```
+Plot significant results :
+```
 plot_richness(ps_1000,title="Shannon index",x="previous_life_birth",measures="Shannon") + 
   geom_boxplot() +
   stat_summary(fun.data = stat_box_data, geom = "text", hjust = 0.5, vjust = 5.0)
@@ -1658,12 +1706,15 @@ pairwise.wilcox.test(rich_spe$Observed,rich_spe$sample_type)
 
 # 10 - Beta diversity (Figure 11)
 
+Load required packages:
 ```
 library("phyloseq")
 library("ggplot2")
 library("vegan")
 library("data.table"); packageVersion("data.table")
-
+```
+The phyloseq object ps_noneg is used to calculate four different distances: Bray-Curtis, Horn, UniFrac, and Weighted UniFrac. An ordination analysis using PCoA method is performed on ps_noneg using the UniFrac distance. The resulting ordination plot shows the samples colored by their sample type, with overlaid ellipses indicating the variation within each group.
+```
 ps_noneg<-ps_1000
 
 dist.bin<-phyloseq::distance(ps_noneg,"bray",binary=T)
@@ -1683,8 +1734,9 @@ plot_ordination(ps_noneg, ordination, color="sample_type") +
 
 # 11 - Pairwise distance intra- and inter-group (Figure 12)
 
+
+Subset phyloseq objects:
 ```
-#subset phyloseq object
 ps_vag_fol<-subset_samples(ps_1000, sample_type!="pen")
 ps_vag_fol<-subset_samples(ps_vag_fol, sample_type!="spe")
 
@@ -1703,10 +1755,11 @@ ps_spe_fol<-subset_samples(ps_spe_fol, sample_type!="pen")
 ps_pen_fol<-subset_samples(ps_1000, sample_type!="spe")
 ps_pen_fol<-subset_samples(ps_pen_fol, sample_type!="vag")
 
-###################
+```
+Comparison between vag and fol samples:
 
-#VAG_FOL
-#get couples number
+Obtain couples number:
+```
 couples<-as.vector(c(unique(metadata$couple)))
 unique<-unique(row.names(metadata))
 
@@ -1723,10 +1776,13 @@ unique_fol<-str_replace(unique_fol, "_fol", "")
 couples_vag_fol<-as.integer(intersect(unique_vag,unique_fol))
 names(couples_vag_fol)<-couples_vag_fol
 
+#correction of mistyping error
 if("3112" %in%couples_vag_fol){
   couples_vag_fol["3112"]<-312
 }
-
+```
+Calculate pairwise distances are using the Bray-Curtis method and the distances are appended to the vector "t":
+```
 #create an empty t vector
 t<-vector()
 
@@ -1747,8 +1803,11 @@ colnames(table_vag_fol)<-c("couple","vag_fol")
 
 ############
 
-#VAG_SPE
-#get couples number
+```
+Comparison between vag and spe samples:
+
+Obtain couples number:
+```
 couples<-as.vector(c(unique(metadata$couple)))
 unique<-unique(row.names(metadata))
 
@@ -1769,7 +1828,9 @@ if("3112" %in%couples_vag_spe){
   couples_vag_spe["3112"]<-312
 }
 
-#create an empty t vector
+```
+Calculate pairwise distances are using the Bray-Curtis method and the distances are appended to the vector "t":
+```
 t<-vector()
 
 #loop: 
@@ -1789,8 +1850,11 @@ colnames(table_vag_spe)<-c("couple","vag_spe")
 
 ############
 
-#VAG_PEN
-#get couples number
+```
+Comparison between vag and pen samples:
+
+Obtain couples number:
+```
 couples<-as.vector(c(unique(metadata$couple)))
 unique<-unique(row.names(metadata))
 
@@ -1811,7 +1875,9 @@ if("3112" %in%couples_vag_pen){
   couples_vag_pen["3112"]<-312
 }
 
-#create an empty t vector
+```
+Calculate pairwise distances are using the Bray-Curtis method and the distances are appended to the vector "t":
+```
 t<-vector()
 
 #loop: 
@@ -1831,8 +1897,11 @@ colnames(table_vag_pen)<-c("couple","vag_pen")
 
 ############
 
-#SPE_FOL
-#get couples number
+```
+Comparison between spe and fol samples:
+
+Obtain couples number:
+```
 couples<-as.vector(c(unique(metadata$couple)))
 unique<-unique(row.names(metadata))
 
@@ -1853,7 +1922,9 @@ if("3112" %in%couples_spe_fol){
   couples_spe_fol["3112"]<-312
 }
 
-#create an empty t vector
+```
+Calculate pairwise distances are using the Bray-Curtis method and the distances are appended to the vector "t":
+```
 t<-vector()
 
 #loop: 
@@ -1873,8 +1944,11 @@ colnames(table_spe_fol)<-c("couple","spe_fol")
 
 ############
 
-#SPE_PEN
-#get couples number
+```
+Comparison between spe and pen samples:
+
+Obtain couples number:
+```
 sample.names<-sample_names(ps_spe_pen)
 
 unique_spe <- grep("spe", sample.names)
@@ -1892,7 +1966,9 @@ if("3112" %in%couples_spe_pen){
 couples_spe_pen["3112"]<-312
 }
 
-#create an empty t vector
+```
+Calculate pairwise distances are using the Bray-Curtis method and the distances are appended to the vector "t":
+```
 t<-vector()
 count=0
 
@@ -1914,8 +1990,11 @@ t<-as.vector(t)
 table_spe_pen<-data.frame(couples_spe_pen,t)
 colnames(table_spe_pen)<-c("couple","spe_pen")
 
-#PEN_FOL
-#get couples number
+```
+Comparison between pen and fol samples:
+
+Obtain couples number:
+```
 couples<-as.vector(c(unique(metadata$couple)))
 unique<-unique(row.names(metadata))
 
@@ -1936,7 +2015,9 @@ if("3112" %in%couples_pen_fol){
   couples_pen_fol["3112"]<-312
 }
 
-#create an empty t vector
+```
+Calculate pairwise distances are using the Bray-Curtis method and the distances are appended to the vector "t":
+```
 t<-vector()
 
 #loop: 
@@ -1955,19 +2036,22 @@ table_pen_fol<-data.frame(couples_pen_fol,t)
 colnames(table_pen_fol)<-c("couple","pen_fol")
 
 ############
+```
+Calculate pairwise distances between samples of the same type.
 
-##pairwise_distance between samples of the same type
-
-#subset for sample_type
+Subset for sample_type:
+```
 ps_vag<-subset_samples(ps_1000, sample_type=="vag")
 ps_fol<-subset_samples(ps_1000, sample_type=="fol")
 ps_spe<-subset_samples(ps_1000, sample_type=="spe")
 ps_pen<-subset_samples(ps_1000, sample_type=="pen")
-
-#get couples combinations
+```
+Get couples combinations:
+```
 #cbn_couples<-combn(x=unique(metadata$couple),m=2)
-
-#SPE-SPE
+```
+Comparison between spe samples:
+```
 metadata <- data.frame(sample_data(ps_spe))
 cbn_couples<-combn(x=unique(metadata$couple),m=2)
 only_spe<-vector()
@@ -1985,7 +2069,9 @@ for(i in 1:ncol(cbn_couples)){
 table_spe_spe<-data.frame(only_spe)
 colnames(table_spe_spe)<-"spe_spe"
 
-#PEN-PEN
+```
+Comparison between pen samples:
+```
 metadata <- data.frame(sample_data(ps_pen))
 cbn_couples<-combn(x=unique(metadata$couple),m=2)
 only_pen<-vector()
@@ -2003,7 +2089,9 @@ for(i in 1:ncol(cbn_couples)){
 table_pen_pen<-data.frame(only_pen)
 colnames(table_pen_pen)<-"pen_pen"
 
-#VAG-VAG
+```
+Comparison between vag samples:
+```
 metadata <- data.frame(sample_data(ps_vag))
 cbn_couples<-combn(x=unique(metadata$couple),m=2)
 only_vag<-vector()
@@ -2021,7 +2109,9 @@ for(i in 1:ncol(cbn_couples)){
 table_vag_vag<-data.frame(only_vag)
 colnames(table_vag_vag)<-"vag_vag"
 
-#create an empty vector
+```
+Comparison between fol samples:
+```
 metadata <- data.frame(sample_data(ps_fol))
 cbn_couples<-combn(x=unique(metadata$couple),m=2)
 only_fol<-vector()
@@ -2041,7 +2131,9 @@ colnames(table_fol_fol)<-"fol_fol"
 
 #intra_groups<-data.frame(only_vag,only_)
 
-#Create table
+```
+Create a table contaning all the distances:
+```
 beta_table<-as.data.frame(rbind(melt(table_fol_fol),melt(table_pen_pen),melt(table_spe_spe),melt(table_vag_vag),
                   melt(table_pen_fol[2]),melt(table_spe_fol[2]),melt(table_spe_pen[2]),melt(table_vag_fol[2]),
                   melt(table_vag_pen[2]),melt(table_vag_spe[2]),melt(table_vag_pen[2])))
@@ -2057,7 +2149,9 @@ beta_table_pen<-as.data.frame(rbind(melt(table_pen_pen),melt(table_spe_pen[2]),m
 test1<-beta_table$variable
 test2<-as.numeric(factor(beta_table$value))
 test<-data.frame(test1,test2)
-                  
+```
+Produce boxplots of the distances:
+```
 ggplot(beta_table_vag, aes(x=variable, y=value)) +
   geom_boxplot(alpha=0.6) +
   theme(legend.position="none") +
@@ -2876,7 +2970,6 @@ dev.off()
 ```
 
 ## 14.2 - Dominant ASVs
-
 ```
 top.taxa <- tax_glom(ps_1000, taxrank=rank_names(ps_1000)[7], 
                      NArm=TRUE, bad_empty=c(NA, "", " ", "\t"))
