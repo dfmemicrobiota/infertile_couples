@@ -161,7 +161,6 @@ Observations:
 \- \`truncLen\` must be large enough to maintain an overlap between forward and reverse reads of at least \`20 + biological.length.variation\` nucleotides.
 \- Two trimming settings: truncLen=c(180,140) and truncLen=c(200,160)
 
-
 Place filtered files in filtered subdirectory
 ```
 path<-"~/luzern2021"
@@ -187,7 +186,7 @@ save.image("luzern2021_DADA2.RData")
 ```
 All parameters but truncLen were default DADA2 parameters.
 
-Move filtered reads to a new folder (bash):
+Move filtered reads to a new folder (done with bash):
 ```
 mkdir ~/luzern2021/05_filtered_sequences
 
@@ -226,7 +225,7 @@ sys_str
 #save.image("luzern2021_DADA2.RData")
 rm(sys_str)
 ```
-Comments: Overall very good reads quality
+Comments: Overall we obtained very good reads quality.
 
 ## 2.6 - Sample inference
 
@@ -257,7 +256,6 @@ head(mergers[[1]])
 ## 2.8 - Construct sequence table
 
 Some sequences may be shorter or longer than what is expected. Here we have sequences of ~250 bp.
-
 ```
 seqtab <- makeSequenceTable(mergers)
 dim(seqtab)
@@ -269,13 +267,18 @@ plot(table(nchar(getSequences(seqtab))))
 
 ## 2.9 - Removal of chimeras
 
-Chimeric sequences are identified if they can be exactly reconstructed by combining a left-segment and a right-segment from two more abundant "parent" sequences.
+Chimeric sequences are identified if they can be exactly reconstructed by combining a left-segment and a right-segment from two more abundant "parent" sequences. The resulting non-chimeric sequences are stored in the seqtab.nochim object.
 ```
 seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=TRUE, verbose=TRUE)
 dim(seqtab.nochim)
 rownames(seqtab.nochim)
+```
+Ratio of the sum of counts in the seqtab.nochim object (non-chimeric sequences) to the sum of counts in the original seqtab object (including chimeric sequences). This provides an indication of the proportion of sequences that were retained after chimera removal:
+```
 sum(seqtab.nochim)/sum(seqtab)
-
+```
+Save sequences:
+```
 #save sequences
 sequences <- data.frame(colnames(seqtab.nochim))
 
@@ -286,11 +289,12 @@ save.image("luzern2021_DADA2.RData")
 
 ## 2.10 - Track the number of reads after each filtering steps (Figure 2)
 
-Create one file containing read counts from raw data and post-trimmomatic (bash):
+Create one file containing read counts from raw data and post-trimmomatic (done in bash):
 ```
 #awk 'BEGIN{FS=","; OFS=","} FNR==NR{a[FNR]=$2;next};{print $0, a[FNR]}' 01_trimmed/readsCounts2.csv  SOURCE DIRECTORY/ReadsCount.csv | grep 'R1' > #ReadsCounts.csv
 ```
 
+Determination of various statistics from 'reads_counts' table, including column sums and percentages of sequences removed after filtering and visualization using boxplot:
 ```
 library(ggplot2)
 library(reshape)
@@ -338,8 +342,8 @@ class(reads_counts)
 
 ## The filtering steps (trimmings, denoising, removal of artifact and chimeras) removed \~15% of the initial reads.
 
-## 1.15 - Track reads through the pipeline
-
+## 1.15 - Tracking reads through the pipeline
+Determination of the percentage of lost reads for each sample.
 ```
 ReadsTracking <- read.csv("~/luzern2021/reads_tracking.csv")
 
@@ -361,39 +365,29 @@ lostperSpecies
 # 2 - Assign taxonomy
 
 Fasta release files from the UNITE ITS database can be used as is. To follow along, download the silva_nr_v132_train_set.fa.gz
-
+Taxonomy is assigned using DADA2 and the SILVA database. The assigned taxonomy and the ASV sequences (stored in "seqtab.nochim") are saved as CSV files.
 ```
-#assignTaxonomy using DADA2/Silva
 setwd("~/luzern2021")
 
 taxa <- assignTaxonomy(seqtab.nochim, "~/SILVA/silva_nr_v132_train_set.fa", multithread=TRUE)
-
 taxa <- addSpecies(taxa,"~/SILVA/silva_species_assignment_v132.fa")
 
 taxa.print <- taxa # Removing sequence rownames for display only
 
 rownames(taxa.print) <- NULL
-
 head(taxa.print)
 
 path_trim<-paste(path, "06_Taxonomy", sep="/")
-
 dir.create(path_trim)
-
 write.csv2(file=paste(path_trim, "Taxtable_dada2.csv", sep="/"),taxa)
-
 write.csv2(file=paste(path_trim, "ASV_sequences.csv", sep="/"),seqtab.nochim)
-
 save.image("~/luzern2021/luzern2021_DADA2.RData")
 ```
 
 ## 2.1 - Convert to fasta and run on SILVA
+ASV sequences are extracted and saved as a FASTA file. Sequences are then aligned using the SINA tool, and the alignment results are saved in a CSV file. Subsequently, a new CSV file is created, containing simplified taxonomy information extracted from the alignment results. Fasta files have sequence as header (so that header is unique). This was done locally in bash, as the limit for online upload was reached
 
-Fasta files have sequence as header (so that header is unique)
-
-This was done locally, as the limit for online upload was reached
-
-```{bash eval=FALSE}
+```
 awk -F';'  'NR>1{ print  ">ASV"++i "\n" $1 }' ~/luzern2021/06_Taxonomy/Taxtable_dada2.csv  > ASV_sequences.fasta
 
 sed 's/\"//g' ASV_sequences.fasta | sed 's/NA//g' > ASV_sequences2.fasta
@@ -402,18 +396,17 @@ sed 's/\"//g' ASV_sequences.fasta | sed 's/NA//g' > ASV_sequences2.fasta
 sina -i ASV_sequences2.fasta -o ASV_sequences2_aligned.csv --meta-fmt csv --db SILVA_138.1_SSURef_NR99_12_06_20_opt.arb --search --search-db SILVA_138.1_SSURef_NR99_12_06_20_opt.arb --lca-fields tax_slv
 
 # Download result file - trim file for SINA taxonomy
-
 # arb-silva.de_align_resultlist_867879.csv
 
 cd ~/luzern2021/06_Taxonomy
-
 echo '"","Kingdom","Phylum","Class","Order","Family","Genus","Species"' > sina_taxonomy.csv
-
 cut -f 1,8 -d , ASV_sequences2_aligned.csv | sed 's/;/,/g' | sed '1d' >> sina_taxonomy.csv
 ```
 
 # 3 - Create Phyloseq object
+A phyloseq object is a data structure used in R for storing and manipulating microbiome data, combining information about sample metadata, taxonomic abundance data, and phylogenetic relationships.
 
+Load required libraries:
 ```
 library(ggplot2)
 library(vegan) 
@@ -435,7 +428,9 @@ setwd("~/luzern2021/07_output")
 # Set plotting theme
 theme_set(theme_bw())
 
-#Data frame containing sample information
+```
+Create a dataframe containing metadata information:
+```
 samdf = read.table(file="~/luzern2021/00_metadata/luzern_metadata_final_290322.csv", 
                    sep=",",header = T, fill=TRUE) 
                   # fill=TRUE allows to read a table with missing entries
@@ -443,20 +438,23 @@ samdf = read.table(file="~/luzern2021/00_metadata/luzern_metadata_final_290322.c
 rownames(samdf) = samdf$sample
 head(samdf)
 samdf$qpcr = as.numeric(samdf$qpcr)
-
-# Import SINA taxonomy
-
+```
+Import the SINA taxonomy:
+```
 taxa.sina <- read.csv(file="~/luzern2021/06_Taxonomy/sina_taxonomy.csv",sep=",",header = TRUE, row.names = 1)
 
 #check dimensions
 dim(taxa.sina)
 dim(seqtab.nochim)
-
+```
+Removing *_F_filt.fastq* pattern from each rowname:
+```
 namestochange<-row.names(seqtab.nochim)
 namestochange<-str_remove(namestochange, "_F_filt.fastq")
 row.names(seqtab.nochim)<-namestochange
-
-#Create a phyloseq object
+```
+Create a phyloseq object
+```
 ps_raw <- phyloseq(otu_table(seqtab.nochim, taxa_are_rows=F), 
                sample_data(samdf), 
                tax_table(taxa))
@@ -466,8 +464,9 @@ otu_table(ps_raw)
 sample_data(ps_raw)
 sample_names(ps_raw)
 tax_table(ps_raw)
-
-# save sequences as refseq and give new names to ASV's
+```
+Extract sequences from the phyloseqq object, save as refseq and give new names to ASV's:
+```
 dna <- Biostrings::DNAStringSet(taxa_names(ps_raw))
 
 names(dna) <- taxa_names(ps_raw)
