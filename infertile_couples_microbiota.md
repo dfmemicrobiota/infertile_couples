@@ -280,7 +280,7 @@ write.csv(sequences, 'SB_sequences.csv')
 save.image("luzern2021_DADA2.RData")
 ```
 
-## 2.10 - Track the number of reads after each filtering steps (Figure 2)
+## 2.10 - Track the number of reads after each filtering steps (Figure 1C)
 
 Create one file containing read counts from raw data and post-trimmomatic (done in bash):
 ```
@@ -539,7 +539,7 @@ plot.gelband.qpcr <- ggplot(table.band, aes(x=gel_band, y=log10(qpcr))) +
 plot.gelband.qpcr
 ```
 
-## 5.2. - Plot qPCR for each sample_type (Figure 4)
+## 5.2. - Plot qPCR for each sample_type (Figure 1A)
 Separate samples by sample type (fol, pen, spe, vag and controls)
 ```
 qpcr_type<-data.frame(samdf$sample_type,samdf$qpcr,samdf$is_sample)
@@ -555,7 +555,7 @@ qpcr_type_plot <- ggplot(qpcr_type, aes(x=sample_type, y=qpcr,fill=sample_type))
 qpcr_type_plot
 ```
 
-# 5.3. - Check control community samples (Figure 3)
+# 5.3. - Check control community samples
 The ZymoBIOMICS Microbial Community DNA Standard was included in the analysis to evaluate possible amplification biases:
 ```
 #subset
@@ -625,7 +625,7 @@ phylum_sums<-sum(phylum_reads)
 phylum_percent<-phylum_reads/phylum_sums*100
 ```
 
-# 6 - Run decontam package (Figure 5)
+# 6 - Run decontam package (Figure 1B)
 The decontam package in R is a tool for detecting and removing potential contaminant sequences from high-throughput sequencing data. It is specifically designed for microbiome studies where contaminants can be present due to various sources, such as reagents, laboratory environment, or sample handling.
 ```
 library(phyloseq); packageVersion("phyloseq")
@@ -746,7 +746,7 @@ ps_1000 = phyloseq::prune_samples(sample_sums(ps)>=1000, ps)
 samdf_1000<-meta(ps_1000)
 ```
 
-## 6.3. - Create plot kept vs removed samples (Figure 6)
+## 6.3. - Create plot kept vs removed samples (Figure 1C)
 ```
 OTUtable.filt<-ps@otu_table@.Data
 OTUtable.filt<-as.data.frame(t(OTUtable.filt))
@@ -820,7 +820,7 @@ phylo.abs <- phylo.ab
 ps2<-phylo.abs
 ```
 
-# 7 - What are the most prevalent ASVs (Figure 7)
+# 7 - What are the most prevalent ASVs (Figure 2A)
 
 Prevalence and abundance of top20 ASVs with maximum-likelihood phylogenetic tree.
 
@@ -1321,7 +1321,7 @@ dev.off()
 ```
 Different parts of the figure were combined in another software.
 
-# 8 - Shared ASVs between sample types. (Figure 8)
+# 8 - Shared ASVs between sample types. (Figure 2B)
 
 Load required packages:
 ```
@@ -1425,7 +1425,7 @@ dev.off()
 
 # 9 - Alpha diversities
 
-## 9.1. Calculate and plot alpha diversities (Figures 9 & 10)
+## 9.1. Calculate and plot alpha diversities (Figure 2C)
 
 Subset phyloseq objects:
 ```
@@ -1704,7 +1704,7 @@ plot_richness(ps_1000,title="Shannon index",x="previous_life_birth",measures="Sh
 pairwise.wilcox.test(rich_spe$Observed,rich_spe$sample_type)
 ```
 
-# 10 - Beta diversity (Figure 11)
+# 10 - Beta diversity (Figure 3)
 
 Load required packages:
 ```
@@ -1732,7 +1732,7 @@ plot_ordination(ps_noneg, ordination, color="sample_type") +
   theme_classic()
 ```
 
-# 11 - Pairwise distance intra- and inter-group (Figure 12)
+# 11 - Pairwise distance intra- and inter-group (Figure 4A)
 
 
 Subset phyloseq objects:
@@ -2159,7 +2159,7 @@ ggplot(beta_table_vag, aes(x=variable, y=value)) +
   geom_boxplot(fill=c("#56b1e9", "#3da822", "#e9568e","#e9568e"))
 ```
 
-# 11 - Cluster samples based on their community composition (Bray-Curtis dissimilarities) (Figures 13 and 14)
+# 11 - Cluster samples based on their community composition (Bray-Curtis dissimilarities) (Figure 4B and supplementary figure 3)
 
 11.1 - Create required functions:
 ```
@@ -2669,7 +2669,7 @@ print(p)
 dev.off()
 ```
 
-# 13 - LEfSeR analysis (Figure 15)
+# 13 - LEfSeR analysis (Figure 5)
 
 Load required packages:
 ```
@@ -3044,3 +3044,6 @@ q <-ggplot(df_all, aes(name2)) + theme_bw() +
     axis.text.x=element_blank(),
     axis.ticks.x=element_blank()) 
 ```
+## 14.2 - Cluster samples based on their community composition (Bray-Curtis dissimilarities) (Supplementary figure 3):
+
+See 11 - Cluster samples based on their community composition (Bray-Curtis dissimilarities)
